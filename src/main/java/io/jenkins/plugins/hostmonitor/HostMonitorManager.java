@@ -28,7 +28,14 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
     private static final Logger LOGGER = Logger.getLogger(HostMonitorManager.class.getName());
 
     private ConcurrentHashMap<String, MonitoredHost> hosts = new ConcurrentHashMap<>();
-    
+
+    // Socket.IO configuration
+    private boolean socketIOEnabled = false;
+    private String socketIOHost = "localhost";
+    private int socketIOPort = 3000;
+    private String socketIONamespace = "/";
+    private String socketIOEventName = "hostStatus";
+
     public HostMonitorManager() {
         load();
         // Initialize Socket.IO client if enabled
@@ -39,10 +46,9 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
      * Initialize Socket.IO client connection
      */
     private void initializeSocketIO() {
-        SocketIOConfig config = SocketIOConfig.get();
-        if (config != null && config.isEnabled()) {
+        if (socketIOEnabled) {
             LOGGER.info("Initializing Socket.IO client");
-            SocketIOClientManager.getInstance().connect();
+            SocketIOClientManager.getInstance().connect(this);
         }
     }
 
@@ -153,36 +159,104 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
         this.hosts = hosts;
     }
 
+    // Socket.IO Getters
+    public boolean isSocketIOEnabled() {
+        return socketIOEnabled;
+    }
+
+    public String getSocketIOHost() {
+        return socketIOHost;
+    }
+
+    public int getSocketIOPort() {
+        return socketIOPort;
+    }
+
+    public String getSocketIONamespace() {
+        return socketIONamespace;
+    }
+
+    public String getSocketIOEventName() {
+        return socketIOEventName;
+    }
+
+    public String getSocketIOServerUrl() {
+        String url = "http://" + socketIOHost + ":" + socketIOPort;
+        if (!socketIONamespace.equals("/")) {
+            url += socketIONamespace;
+        }
+        return url;
+    }
+
     /**
      * Get Socket.IO connection status
      */
     public String getSocketIOStatus() {
-        SocketIOConfig config = SocketIOConfig.get();
-        if (config == null || !config.isEnabled()) {
+        if (!socketIOEnabled) {
             return "Disabled";
         }
         return SocketIOClientManager.getInstance().getConnectionStatus();
     }
 
-    /**
-     * Get Socket.IO configuration
-     */
-    public SocketIOConfig getSocketIOConfig() {
-        return SocketIOConfig.get();
+    // Socket.IO Setters
+    public void setSocketIOEnabled(boolean enabled) {
+        this.socketIOEnabled = enabled;
+    }
+
+    public void setSocketIOHost(String host) {
+        this.socketIOHost = host;
+    }
+
+    public void setSocketIOPort(int port) {
+        this.socketIOPort = port;
+    }
+
+    public void setSocketIONamespace(String namespace) {
+        this.socketIONamespace = namespace;
+    }
+
+    public void setSocketIOEventName(String eventName) {
+        this.socketIOEventName = eventName;
     }
 
     /**
-     * Handle form submission to manually update hosts
+     * Handle Socket.IO configuration form submission
      */
     @POST
-    public void doConfigSubmit(StaplerRequest req, StaplerResponse rsp) 
+    public void doConfigSubmit(StaplerRequest req, StaplerResponse rsp)
             throws ServletException, IOException {
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
-        
+
         JSONObject form = req.getSubmittedForm();
-        // Handle form data if needed
-        
+
+        // Get Socket.IO configuration from form
+        boolean wasEnabled = socketIOEnabled;
+        socketIOEnabled = form.optBoolean("socketIOEnabled", false);
+        socketIOHost = form.optString("socketIOHost", "localhost");
+        socketIOPort = form.optInt("socketIOPort", 3000);
+        socketIONamespace = form.optString("socketIONamespace", "/");
+        socketIOEventName = form.optString("socketIOEventName", "hostStatus");
+
+        LOGGER.info("Socket.IO configuration updated - Enabled: " + socketIOEnabled);
+
+        // Save configuration
         save();
+
+        // Handle connection changes
+        if (socketIOEnabled && !wasEnabled) {
+            // Enabled - connect
+            LOGGER.info("Socket.IO enabled, connecting...");
+            SocketIOClientManager.getInstance().connect(this);
+        } else if (!socketIOEnabled && wasEnabled) {
+            // Disabled - disconnect
+            LOGGER.info("Socket.IO disabled, disconnecting...");
+            SocketIOClientManager.getInstance().disconnect();
+        } else if (socketIOEnabled) {
+            // Still enabled but config changed - reconnect
+            LOGGER.info("Socket.IO configuration changed, reconnecting...");
+            SocketIOClientManager.getInstance().reconnect(this);
+        }
+
         rsp.sendRedirect(".");
     }
 }

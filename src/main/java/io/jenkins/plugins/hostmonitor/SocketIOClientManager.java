@@ -35,22 +35,21 @@ public class SocketIOClientManager {
     /**
      * Connect to Socket.IO server based on configuration
      */
-    public synchronized void connect() {
+    public synchronized void connect(HostMonitorManager manager) {
         // Disconnect if already connected
         if (socket != null && socket.connected()) {
             disconnect();
         }
-        
-        SocketIOConfig config = SocketIOConfig.get();
-        if (config == null || !config.isEnabled()) {
+
+        if (manager == null || !manager.isSocketIOEnabled()) {
             LOGGER.info("Socket.IO is not enabled in configuration");
             return;
         }
-        
+
         try {
-            String serverUrl = config.getServerUrl();
+            String serverUrl = manager.getSocketIOServerUrl();
             LOGGER.info("Connecting to Socket.IO server: " + serverUrl);
-            
+
             // Configure Socket.IO options
             IO.Options options = IO.Options.builder()
                 .setReconnection(true)
@@ -58,17 +57,17 @@ public class SocketIOClientManager {
                 .setReconnectionDelayMax(5000)
                 .setReconnectionAttempts(Integer.MAX_VALUE)
                 .build();
-            
+
             socket = IO.socket(serverUrl, options);
-            
+
             // Set up event listeners
-            setupEventListeners(config.getEventName());
-            
+            setupEventListeners(manager.getSocketIOEventName());
+
             // Connect
             socket.connect();
-            
+
             LOGGER.info("Socket.IO connection initiated");
-            
+
         } catch (URISyntaxException e) {
             LOGGER.log(Level.SEVERE, "Invalid Socket.IO server URL", e);
         } catch (Exception e) {
@@ -92,9 +91,9 @@ public class SocketIOClientManager {
     /**
      * Reconnect with current configuration
      */
-    public void reconnect() {
+    public void reconnect(HostMonitorManager manager) {
         disconnect();
-        connect();
+        connect(manager);
     }
     
     /**

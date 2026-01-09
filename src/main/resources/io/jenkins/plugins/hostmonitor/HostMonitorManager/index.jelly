@@ -5,62 +5,95 @@
         <l:main-panel>
             <h1>Host Monitor Configuration</h1>
 
-            <!-- Socket.IO Connection Status -->
-            <j:set var="socketIOConfig" value="${it.socketIOConfig}"/>
-            <j:set var="socketIOStatus" value="${it.socketIOStatus}"/>
+            <!-- Socket.IO Configuration Form -->
+            <f:form method="post" action="configSubmit">
+                <f:section title="Socket.IO Integration">
+                    <j:set var="socketIOStatus" value="${it.socketIOStatus}"/>
 
-            <div style="margin: 15px 0; padding: 12px; border-left: 4px solid #4a90e2; background-color: #f5f8fa;">
-                <h3 style="margin-top: 0;">Socket.IO Integration</h3>
-                <table style="border: none;">
-                    <tr>
-                        <td style="padding: 4px 12px 4px 0; font-weight: bold;">Status:</td>
-                        <td style="padding: 4px;">
-                            <j:choose>
-                                <j:when test="${socketIOStatus == 'Connected'}">
-                                    <span style="color: #155724; background-color: #d4edda; padding: 2px 8px; border-radius: 3px; font-weight: bold;">
-                                        ✓ ${socketIOStatus}
-                                    </span>
-                                </j:when>
-                                <j:when test="${socketIOStatus == 'Disabled'}">
-                                    <span style="color: #666; background-color: #e2e3e5; padding: 2px 8px; border-radius: 3px;">
-                                        ${socketIOStatus}
-                                    </span>
-                                </j:when>
-                                <j:otherwise>
-                                    <span style="color: #856404; background-color: #fff3cd; padding: 2px 8px; border-radius: 3px;">
-                                        ${socketIOStatus}
-                                    </span>
-                                </j:otherwise>
-                            </j:choose>
-                        </td>
-                    </tr>
-                    <j:if test="${socketIOConfig.enabled}">
-                        <tr>
-                            <td style="padding: 4px 12px 4px 0; font-weight: bold;">Server:</td>
-                            <td style="padding: 4px;"><code>${socketIOConfig.serverUrl}</code></td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 4px 12px 4px 0; font-weight: bold;">Event:</td>
-                            <td style="padding: 4px;"><code>${socketIOConfig.eventName}</code></td>
-                        </tr>
-                    </j:if>
-                </table>
-                <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">
-                    <j:choose>
-                        <j:when test="${socketIOConfig.enabled}">
-                            Real-time updates are enabled. Configure in <a href="${rootURL}/manage/configure">Manage Jenkins → System</a>.
-                        </j:when>
-                        <j:otherwise>
-                            Enable Socket.IO in <a href="${rootURL}/manage/configure">Manage Jenkins → System</a> for real-time updates.
-                        </j:otherwise>
-                    </j:choose>
-                </p>
-            </div>
+                    <div style="margin-bottom: 15px;">
+                        <table style="border: none;">
+                            <tr>
+                                <td style="padding: 4px 12px 4px 0; font-weight: bold;">Connection Status:</td>
+                                <td style="padding: 4px;">
+                                    <j:choose>
+                                        <j:when test="${socketIOStatus == 'Connected'}">
+                                            <span style="color: #155724; background-color: #d4edda; padding: 2px 8px; border-radius: 3px; font-weight: bold;">
+                                                ✓ ${socketIOStatus}
+                                            </span>
+                                        </j:when>
+                                        <j:when test="${socketIOStatus == 'Disabled'}">
+                                            <span style="color: #666; background-color: #e2e3e5; padding: 2px 8px; border-radius: 3px;">
+                                                ${socketIOStatus}
+                                            </span>
+                                        </j:when>
+                                        <j:otherwise>
+                                            <span style="color: #856404; background-color: #fff3cd; padding: 2px 8px; border-radius: 3px;">
+                                                ${socketIOStatus}
+                                            </span>
+                                        </j:otherwise>
+                                    </j:choose>
+                                </td>
+                            </tr>
+                            <j:if test="${it.socketIOEnabled}">
+                                <tr>
+                                    <td style="padding: 4px 12px 4px 0; font-weight: bold;">Server URL:</td>
+                                    <td style="padding: 4px;"><code>${it.socketIOServerUrl}</code></td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 4px 12px 4px 0; font-weight: bold;">Event Name:</td>
+                                    <td style="padding: 4px;"><code>${it.socketIOEventName}</code></td>
+                                </tr>
+                            </j:if>
+                        </table>
+                    </div>
 
-            <p>
+                    <f:entry title="Enable Socket.IO" field="socketIOEnabled">
+                        <f:checkbox name="socketIOEnabled" checked="${it.socketIOEnabled}"/>
+                    </f:entry>
+
+                    <f:entry title="Server Host" field="socketIOHost">
+                        <f:textbox name="socketIOHost" value="${it.socketIOHost}" default="localhost"/>
+                    </f:entry>
+
+                    <f:entry title="Server Port" field="socketIOPort">
+                        <f:number name="socketIOPort" value="${it.socketIOPort}" min="1" max="65535" default="3000"/>
+                    </f:entry>
+
+                    <f:entry title="Namespace" field="socketIONamespace">
+                        <f:textbox name="socketIONamespace" value="${it.socketIONamespace}" default="/"/>
+                    </f:entry>
+
+                    <f:entry title="Event Name" field="socketIOEventName">
+                        <f:textbox name="socketIOEventName" value="${it.socketIOEventName}" default="hostStatus"/>
+                    </f:entry>
+
+                    <div style="margin-top: 10px; padding: 10px; background-color: #f0f0f0; border-left: 4px solid #4a90e2;">
+                        <strong>Socket.IO Message Format:</strong>
+                        <pre style="margin-top: 5px; background-color: white; padding: 8px; border-radius: 3px; font-size: 12px;">
+{
+  "hostname": "server1.example.com",
+  "status": "ONLINE",
+  "message": "All services running"
+}</pre>
+                        <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">
+                            The plugin will listen for events on the specified namespace and event name.
+                            Status values: ONLINE, UP, HEALTHY (green), WARNING, DEGRADED (yellow),
+                            OFFLINE, DOWN, ERROR (red), or any custom value (grey).
+                        </p>
+                    </div>
+
+                    <f:block>
+                        <div style="margin-top: 15px;">
+                            <f:submit value="Save Configuration"/>
+                        </div>
+                    </f:block>
+                </f:section>
+            </f:form>
+
+            <p style="margin-top: 30px;">
                 This page displays all currently monitored hosts.
                 You can update host status from Jenkins Pipeline using the <code>updateHostStatus</code> step,
-                or enable Socket.IO for real-time updates.
+                or enable Socket.IO above for real-time updates.
             </p>
 
             <h2>Monitored Hosts</h2>
