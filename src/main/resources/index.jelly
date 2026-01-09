@@ -1,0 +1,4 @@
+<?jelly escape-by-default='true'?>
+<div>
+    Displays status of external hosts in Jenkins sidebar. Monitor multiple hosts and view their availability at a glance.
+</div>

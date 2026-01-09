@@ -1,0 +1,107 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout" xmlns:f="/lib/form">
+    <l:layout title="Host Monitor Configuration" permission="${app.ADMINISTER}">
+        <st:include page="sidepanel.jelly" it="${app}"/>
+        <l:main-panel>
+            <h1>Host Monitor Configuration</h1>
+            
+            <p>
+                This page displays all currently monitored hosts. 
+                You can update host status from Jenkins Pipeline using the <code>updateHostStatus</code> step.
+            </p>
+            
+            <h2>Monitored Hosts</h2>
+            
+            <j:set var="hosts" value="${it.hosts}"/>
+            
+            <j:choose>
+                <j:when test="${hosts.isEmpty()}">
+                    <p>No hosts are currently being monitored.</p>
+                    <p>Add hosts by using the <code>updateHostStatus</code> step in your Jenkins Pipeline:</p>
+                    <pre>
+updateHostStatus hostname: 'server1.example.com', status: 'ONLINE', message: 'All services running'
+                    </pre>
+                </j:when>
+                <j:otherwise>
+                    <table class="pane bigtable sortable">
+                        <thead>
+                            <tr>
+                                <th class="pane-header">Hostname</th>
+                                <th class="pane-header">Status</th>
+                                <th class="pane-header">Message</th>
+                                <th class="pane-header">Last Updated</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <j:forEach var="host" items="${hosts}">
+                                <tr>
+                                    <td class="pane">${host.hostname}</td>
+                                    <td class="pane">
+                                        <span class="status-badge ${host.statusClass}">
+                                            ${host.status}
+                                        </span>
+                                    </td>
+                                    <td class="pane">${host.statusMessage}</td>
+                                    <td class="pane">
+                                        <j:invoke on="${host.lastUpdatedDate}" method="toString" var="timestamp"/>
+                                        ${timestamp}
+                                    </td>
+                                </tr>
+                            </j:forEach>
+                        </tbody>
+                    </table>
+                </j:otherwise>
+            </j:choose>
+            
+            <h2>Pipeline Usage</h2>
+            <p>Use the following step in your Jenkinsfile to update host status:</p>
+            
+            <h3>Declarative Pipeline</h3>
+            <pre>
+pipeline {
+    agent any
+    stages {
+        stage('Monitor Hosts') {
+            steps {
+                script {
+                    // Update host status
+                    updateHostStatus hostname: 'web-server-01', 
+                                    status: 'ONLINE', 
+                                    message: 'HTTP 200 OK'
+                    
+                    // Different status types
+                    updateHostStatus hostname: 'db-server-01', 
+                                    status: 'WARNING', 
+                                    message: 'High CPU usage'
+                    
+                    updateHostStatus hostname: 'api-server-01', 
+                                    status: 'OFFLINE', 
+                                    message: 'Connection timeout'
+                }
+            }
+        }
+    }
+}
+            </pre>
+            
+            <h3>Scripted Pipeline</h3>
+            <pre>
+node {
+    stage('Check Hosts') {
+        updateHostStatus hostname: 'prod-server', 
+                        status: 'HEALTHY', 
+                        message: 'All checks passed'
+    }
+}
+            </pre>
+            
+            <h3>Status Values</h3>
+            <ul>
+                <li><strong>ONLINE/UP/HEALTHY</strong> - Displayed in green</li>
+                <li><strong>WARNING/DEGRADED</strong> - Displayed in yellow</li>
+                <li><strong>OFFLINE/DOWN/ERROR</strong> - Displayed in red</li>
+                <li><strong>UNKNOWN</strong> or any other value - Displayed in grey</li>
+            </ul>
+        </l:main-panel>
+    </l:layout>
+</j:jelly>

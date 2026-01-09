@@ -1,0 +1,221 @@
+// Example Jenkinsfile for Host Monitoring
+
+pipeline {
+    agent any
+    
+    // Run this pipeline periodically to keep host status updated
+    triggers {
+        cron('*/10 * * * *') // Every 10 minutes
+    }
+    
+    stages {
+        stage('Monitor Production Servers') {
+            steps {
+                script {
+                    echo 'Checking production web servers...'
+                    
+                    // Web Server 1
+                    try {
+                        def response = sh(
+                            script: 'curl -s -o /dev/null -w "%{http_code}" http://web-server-01.example.com/health',
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (response == '200') {
+                            updateHostStatus(
+                                hostname: 'web-server-01.example.com',
+                                status: 'ONLINE',
+                                message: 'HTTP 200 - All services operational'
+                            )
+                        } else {
+                            updateHostStatus(
+                                hostname: 'web-server-01.example.com',
+                                status: 'WARNING',
+                                message: "HTTP ${response} - Service may be degraded"
+                            )
+                        }
+                    } catch (Exception e) {
+                        updateHostStatus(
+                            hostname: 'web-server-01.example.com',
+                            status: 'OFFLINE',
+                            message: "Connection failed: ${e.message}"
+                        )
+                    }
+                    
+                    // Web Server 2
+                    try {
+                        def response = sh(
+                            script: 'curl -s -o /dev/null -w "%{http_code}" http://web-server-02.example.com/health',
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (response == '200') {
+                            updateHostStatus(
+                                hostname: 'web-server-02.example.com',
+                                status: 'ONLINE',
+                                message: 'HTTP 200 - All services operational'
+                            )
+                        } else {
+                            updateHostStatus(
+                                hostname: 'web-server-02.example.com',
+                                status: 'WARNING',
+                                message: "HTTP ${response} - Service may be degraded"
+                            )
+                        }
+                    } catch (Exception e) {
+                        updateHostStatus(
+                            hostname: 'web-server-02.example.com',
+                            status: 'OFFLINE',
+                            message: "Connection failed: ${e.message}"
+                        )
+                    }
+                }
+            }
+        }
+        
+        stage('Monitor Database Servers') {
+            steps {
+                script {
+                    echo 'Checking database servers...'
+                    
+                    // Database Primary
+                    def dbStatus = sh(
+                        script: 'nc -zv db-primary.example.com 5432 2>&1',
+                        returnStatus: true
+                    )
+                    
+                    if (dbStatus == 0) {
+                        updateHostStatus(
+                            hostname: 'db-primary.example.com',
+                            status: 'HEALTHY',
+                            message: 'PostgreSQL port 5432 responding'
+                        )
+                    } else {
+                        updateHostStatus(
+                            hostname: 'db-primary.example.com',
+                            status: 'ERROR',
+                            message: 'Cannot connect to PostgreSQL'
+                        )
+                    }
+                    
+                    // Database Replica
+                    def replicaStatus = sh(
+                        script: 'nc -zv db-replica.example.com 5432 2>&1',
+                        returnStatus: true
+                    )
+                    
+                    if (replicaStatus == 0) {
+                        updateHostStatus(
+                            hostname: 'db-replica.example.com',
+                            status: 'HEALTHY',
+                            message: 'PostgreSQL replica responding'
+                        )
+                    } else {
+                        updateHostStatus(
+                            hostname: 'db-replica.example.com',
+                            status: 'ERROR',
+                            message: 'Replica connection failed'
+                        )
+                    }
+                }
+            }
+        }
+        
+        stage('Monitor Cache Servers') {
+            steps {
+                script {
+                    echo 'Checking Redis cache servers...'
+                    
+                    def cacheServers = [
+                        'cache-01.example.com',
+                        'cache-02.example.com'
+                    ]
+                    
+                    cacheServers.each { server ->
+                        def redisStatus = sh(
+                            script: "redis-cli -h ${server} ping 2>&1",
+                            returnStatus: true
+                        )
+                        
+                        if (redisStatus == 0) {
+                            updateHostStatus(
+                                hostname: server,
+                                status: 'UP',
+                                message: 'Redis responding to PING'
+                            )
+                        } else {
+                            updateHostStatus(
+                                hostname: server,
+                                status: 'DOWN',
+                                message: 'Redis not responding'
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Monitor External APIs') {
+            steps {
+                script {
+                    echo 'Checking external API dependencies...'
+                    
+                    // Payment Gateway
+                    try {
+                        def startTime = System.currentTimeMillis()
+                        def apiResponse = sh(
+                            script: 'curl -s -o /dev/null -w "%{http_code}" https://api.payment-gateway.com/v1/status',
+                            returnStdout: true
+                        ).trim()
+                        def responseTime = System.currentTimeMillis() - startTime
+                        
+                        if (apiResponse == '200') {
+                            if (responseTime < 1000) {
+                                updateHostStatus(
+                                    hostname: 'Payment Gateway API',
+                                    status: 'ONLINE',
+                                    message: "Response time: ${responseTime}ms"
+                                )
+                            } else {
+                                updateHostStatus(
+                                    hostname: 'Payment Gateway API',
+                                    status: 'DEGRADED',
+                                    message: "Slow response: ${responseTime}ms"
+                                )
+                            }
+                        } else {
+                            updateHostStatus(
+                                hostname: 'Payment Gateway API',
+                                status: 'ERROR',
+                                message: "HTTP ${apiResponse}"
+                            )
+                        }
+                    } catch (Exception e) {
+                        updateHostStatus(
+                            hostname: 'Payment Gateway API',
+                            status: 'OFFLINE',
+                            message: 'Connection timeout'
+                        )
+                    }
+                    
+                    // Third-party Service
+                    updateHostStatus(
+                        hostname: 'analytics.thirdparty.com',
+                        status: 'ONLINE',
+                        message: 'Service operational'
+                    )
+                }
+            }
+        }
+    }
+    
+    post {
+        failure {
+            echo 'Host monitoring pipeline failed!'
+            // You could send notifications here
+        }
+        success {
+            echo 'Host status updated successfully'
+        }
+    }
+}

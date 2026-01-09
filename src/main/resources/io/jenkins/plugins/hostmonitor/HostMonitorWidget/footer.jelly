@@ -1,0 +1,47 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout" xmlns:f="/lib/form">
+    <st:adjunct includes="io.jenkins.plugins.hostmonitor.hostmonitor"/>
+    
+    <j:set var="widget" value="${it}"/>
+    <j:set var="hosts" value="${widget.hosts}"/>
+    
+    <j:if test="${widget.enabled and !hosts.isEmpty()}">
+        <div class="widget host-monitor-widget">
+            <div class="widget-header">
+                <h2>Host Monitor Status</h2>
+            </div>
+            <div class="widget-content">
+                <table class="pane bigtable host-monitor-table">
+                    <thead>
+                        <tr>
+                            <th class="pane-header">Host</th>
+                            <th class="pane-header">Status</th>
+                            <th class="pane-header">Last Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <j:forEach var="host" items="${hosts}">
+                            <tr class="host-row">
+                                <td class="pane">
+                                    <div class="host-name">${host.hostname}</div>
+                                    <j:if test="${!empty(host.statusMessage)}">
+                                        <div class="host-message">${host.statusMessage}</div>
+                                    </j:if>
+                                </td>
+                                <td class="pane">
+                                    <span class="status-badge ${host.statusClass}">
+                                        ${host.status}
+                                    </span>
+                                </td>
+                                <td class="pane">
+                                    <j:invoke on="${host.lastUpdatedDate}" method="toString" var="timestamp"/>
+                                    <span class="timestamp">${timestamp}</span>
+                                </td>
+                            </tr>
+                        </j:forEach>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </j:if>
+</j:jelly>
