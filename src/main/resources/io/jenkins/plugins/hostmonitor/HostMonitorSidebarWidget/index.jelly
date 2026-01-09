@@ -58,17 +58,22 @@
             background-color: #d4edda;
             color: #155724;
         }
-        
+
+        #host-monitor-status .status-blue {
+            background-color: #cfe2ff;
+            color: #084298;
+        }
+
         #host-monitor-status .status-yellow {
             background-color: #fff3cd;
             color: #856404;
         }
-        
+
         #host-monitor-status .status-red {
             background-color: #f8d7da;
             color: #721c24;
         }
-        
+
         #host-monitor-status .status-grey {
             background-color: #e2e3e5;
             color: #383d41;

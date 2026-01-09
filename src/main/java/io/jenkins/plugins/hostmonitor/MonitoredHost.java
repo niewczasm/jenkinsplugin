@@ -56,6 +56,8 @@ public class MonitoredHost implements Serializable {
             case "UP":
             case "HEALTHY":
                 return "status-green";
+            case "BUSY":
+                return "status-blue";
             case "WARNING":
             case "DEGRADED":
                 return "status-yellow";
