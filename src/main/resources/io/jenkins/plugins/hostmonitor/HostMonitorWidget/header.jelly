@@ -1,0 +1,54 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout">
+    <j:set var="widget" value="${it}"/>
+    
+    <j:if test="${widget.enabled}">
+        <st:adjunct includes="io.jenkins.plugins.hostmonitor.hostmonitor"/>
+        
+        <!-- Hidden container that will be moved to sidebar -->
+        <div id="host-monitor-widget-content" style="display: none;">
+            <st:include it="${widget.sidebarWidget}" page="index.jelly"/>
+        </div>
+        
+        <script>
+        (function() {
+            // Wait for DOM to be ready
+            function insertHostMonitorWidget() {
+                var content = document.getElementById('host-monitor-widget-content');
+                var sidebar = document.getElementById('side-panel');
+                
+                if (!content || !sidebar) {
+                    return;
+                }
+                
+                // Find the build executor status widget (last common widget in sidebar)
+                var executorWidget = sidebar.querySelector('.pane.stripped') || 
+                                   sidebar.querySelector('div[style*="border"]') ||
+                                   sidebar.lastElementChild;
+                
+                // Show the content
+                content.style.display = 'block';
+                
+                // Insert after executor status or at the end of sidebar
+                if (executorWidget &amp;&amp; executorWidget.nextSibling) {
+                    sidebar.insertBefore(content, executorWidget.nextSibling);
+                } else if (executorWidget) {
+                    executorWidget.parentNode.insertBefore(content, executorWidget.nextSibling);
+                } else {
+                    sidebar.appendChild(content);
+                }
+            }
+            
+            // Try immediately
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', insertHostMonitorWidget);
+            } else {
+                insertHostMonitorWidget();
+            }
+            
+            // Also try after a short delay to handle async rendering
+            setTimeout(insertHostMonitorWidget, 100);
+        })();
+        </script>
+    </j:if>
+</j:jelly>

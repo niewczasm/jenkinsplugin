@@ -2,7 +2,6 @@ package io.jenkins.plugins.hostmonitor;
 
 import hudson.Extension;
 import hudson.model.PageDecorator;
-import hudson.model.User;
 import jenkins.model.Jenkins;
 
 import java.util.List;
@@ -12,17 +11,29 @@ import java.util.List;
  */
 @Extension
 public class HostMonitorWidget extends PageDecorator {
-    
+
+    private transient HostMonitorSidebarWidget sidebarWidget;
+
     public HostMonitorWidget() {
         super(HostMonitorWidget.class);
         load();
     }
-    
+
     @Override
     public String getDisplayName() {
         return "Host Monitor Widget";
     }
-    
+
+    /**
+     * Get the sidebar widget instance
+     */
+    public HostMonitorSidebarWidget getSidebarWidget() {
+        if (sidebarWidget == null) {
+            sidebarWidget = new HostMonitorSidebarWidget();
+        }
+        return sidebarWidget;
+    }
+
     /**
      * Get all monitored hosts for display
      */
@@ -30,12 +41,11 @@ public class HostMonitorWidget extends PageDecorator {
         HostMonitorManager manager = HostMonitorManager.getInstance();
         return manager.getHosts();
     }
-    
+
     /**
      * Check if the widget should be displayed
      */
     public boolean isEnabled() {
-        // You can add logic here to show/hide the widget based on permissions
-        return true;
+        return !getHosts().isEmpty();
     }
 }

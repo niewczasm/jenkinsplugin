@@ -1,0 +1,81 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout" xmlns:f="/lib/form">
+    <l:pane width="2" title="Host Monitor Status" id="host-monitor-status">
+        <j:set var="hosts" value="${it.hosts}"/>
+        
+        <j:choose>
+            <j:when test="${hosts.isEmpty()}">
+                <div class="pane-content" style="padding: 8px; color: #666;">
+                    No hosts monitored
+                </div>
+            </j:when>
+            <j:otherwise>
+                <table class="pane sortable" style="width: 100%;">
+                    <tbody>
+                        <j:forEach var="host" items="${hosts}">
+                            <tr class="host-monitor-row">
+                                <td class="pane" style="padding: 6px;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                                        <div style="flex: 1; min-width: 0;">
+                                            <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" 
+                                                 title="${host.hostname}">
+                                                ${host.hostname}
+                                            </div>
+                                            <j:if test="${!empty(host.statusMessage)}">
+                                                <div style="font-size: 11px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                                                     title="${host.statusMessage}">
+                                                    ${host.statusMessage}
+                                                </div>
+                                            </j:if>
+                                        </div>
+                                        <div style="margin-left: 8px;">
+                                            <span class="status-badge-small ${host.statusClass}">
+                                                ${host.status}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </j:forEach>
+                    </tbody>
+                </table>
+            </j:otherwise>
+        </j:choose>
+    </l:pane>
+    
+    <style>
+        #host-monitor-status .status-badge-small {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        
+        #host-monitor-status .status-green {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        #host-monitor-status .status-yellow {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        #host-monitor-status .status-red {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        #host-monitor-status .status-grey {
+            background-color: #e2e3e5;
+            color: #383d41;
+        }
+        
+        #host-monitor-status .host-monitor-row:hover {
+            background-color: #f5f5f5;
+        }
+    </style>
+</j:jelly>
