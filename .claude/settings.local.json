@@ -4,7 +4,8 @@
       "Bash(mvn clean compile:*)",
       "Bash(mvn clean package:*)",
       "Bash(ls:*)",
-      "Bash(unzip:*)"
+      "Bash(unzip:*)",
+      "Bash(mvn package:*)"
     ]
   }
 }

@@ -4,12 +4,65 @@
         <st:include page="sidepanel.jelly" it="${app}"/>
         <l:main-panel>
             <h1>Host Monitor Configuration</h1>
-            
+
+            <!-- Socket.IO Connection Status -->
+            <j:set var="socketIOConfig" value="${it.socketIOConfig}"/>
+            <j:set var="socketIOStatus" value="${it.socketIOStatus}"/>
+
+            <div style="margin: 15px 0; padding: 12px; border-left: 4px solid #4a90e2; background-color: #f5f8fa;">
+                <h3 style="margin-top: 0;">Socket.IO Integration</h3>
+                <table style="border: none;">
+                    <tr>
+                        <td style="padding: 4px 12px 4px 0; font-weight: bold;">Status:</td>
+                        <td style="padding: 4px;">
+                            <j:choose>
+                                <j:when test="${socketIOStatus == 'Connected'}">
+                                    <span style="color: #155724; background-color: #d4edda; padding: 2px 8px; border-radius: 3px; font-weight: bold;">
+                                        ✓ ${socketIOStatus}
+                                    </span>
+                                </j:when>
+                                <j:when test="${socketIOStatus == 'Disabled'}">
+                                    <span style="color: #666; background-color: #e2e3e5; padding: 2px 8px; border-radius: 3px;">
+                                        ${socketIOStatus}
+                                    </span>
+                                </j:when>
+                                <j:otherwise>
+                                    <span style="color: #856404; background-color: #fff3cd; padding: 2px 8px; border-radius: 3px;">
+                                        ${socketIOStatus}
+                                    </span>
+                                </j:otherwise>
+                            </j:choose>
+                        </td>
+                    </tr>
+                    <j:if test="${socketIOConfig.enabled}">
+                        <tr>
+                            <td style="padding: 4px 12px 4px 0; font-weight: bold;">Server:</td>
+                            <td style="padding: 4px;"><code>${socketIOConfig.serverUrl}</code></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 4px 12px 4px 0; font-weight: bold;">Event:</td>
+                            <td style="padding: 4px;"><code>${socketIOConfig.eventName}</code></td>
+                        </tr>
+                    </j:if>
+                </table>
+                <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">
+                    <j:choose>
+                        <j:when test="${socketIOConfig.enabled}">
+                            Real-time updates are enabled. Configure in <a href="${rootURL}/manage/configure">Manage Jenkins → System</a>.
+                        </j:when>
+                        <j:otherwise>
+                            Enable Socket.IO in <a href="${rootURL}/manage/configure">Manage Jenkins → System</a> for real-time updates.
+                        </j:otherwise>
+                    </j:choose>
+                </p>
+            </div>
+
             <p>
-                This page displays all currently monitored hosts. 
-                You can update host status from Jenkins Pipeline using the <code>updateHostStatus</code> step.
+                This page displays all currently monitored hosts.
+                You can update host status from Jenkins Pipeline using the <code>updateHostStatus</code> step,
+                or enable Socket.IO for real-time updates.
             </p>
-            
+
             <h2>Monitored Hosts</h2>
             
             <j:set var="hosts" value="${it.hosts}"/>

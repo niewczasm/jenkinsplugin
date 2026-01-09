@@ -31,6 +31,19 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
     
     public HostMonitorManager() {
         load();
+        // Initialize Socket.IO client if enabled
+        initializeSocketIO();
+    }
+
+    /**
+     * Initialize Socket.IO client connection
+     */
+    private void initializeSocketIO() {
+        SocketIOConfig config = SocketIOConfig.get();
+        if (config != null && config.isEnabled()) {
+            LOGGER.info("Initializing Socket.IO client");
+            SocketIOClientManager.getInstance().connect();
+        }
     }
 
     public static HostMonitorManager getInstance() {
@@ -139,7 +152,25 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
     public void setHostsMap(ConcurrentHashMap<String, MonitoredHost> hosts) {
         this.hosts = hosts;
     }
-    
+
+    /**
+     * Get Socket.IO connection status
+     */
+    public String getSocketIOStatus() {
+        SocketIOConfig config = SocketIOConfig.get();
+        if (config == null || !config.isEnabled()) {
+            return "Disabled";
+        }
+        return SocketIOClientManager.getInstance().getConnectionStatus();
+    }
+
+    /**
+     * Get Socket.IO configuration
+     */
+    public SocketIOConfig getSocketIOConfig() {
+        return SocketIOConfig.get();
+    }
+
     /**
      * Handle form submission to manually update hosts
      */
