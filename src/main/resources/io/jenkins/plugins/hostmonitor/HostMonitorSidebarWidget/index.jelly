@@ -1,6 +1,6 @@
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout" xmlns:f="/lib/form">
-    <l:pane width="2" title="Host Monitor Status" id="host-monitor-status">
+    <l:pane width="2" title="Autotest Executors Status" id="host-monitor-status">
         <j:set var="hosts" value="${it.hosts}"/>
         
         <j:choose>
@@ -10,7 +10,7 @@
                 </div>
             </j:when>
             <j:otherwise>
-                <table class="pane sortable" style="width: 100%;">
+                <table class="pane" style="width: 100%;">
                     <tbody>
                         <j:forEach var="host" items="${hosts}">
                             <tr class="host-monitor-row">

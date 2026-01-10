@@ -300,7 +300,7 @@ public class SocketIOClientManager {
                 for (String baseHost : baseHosts) {
                     if (!reportedHosts.contains(baseHost)) {
                         LOGGER.fine("Base host not reported, marking as OFFLINE: " + baseHost);
-                        manager.updateHost(baseHost, "OFFLINE", "Not reported by Socket.IO");
+                        manager.updateHost(baseHost, "OFFLINE", "Not found in Autotest Registry");
                     }
                 }
             }
