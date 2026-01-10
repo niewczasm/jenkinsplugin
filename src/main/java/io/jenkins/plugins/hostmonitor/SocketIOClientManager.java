@@ -183,9 +183,18 @@ public class SocketIOClientManager {
                 LOGGER.fine("Data is org.json.JSONObject");
                 json = (org.json.JSONObject) data;
             } else if (data instanceof String) {
-                LOGGER.fine("Data is String, parsing to JSONObject");
                 String strData = (String) data;
                 LOGGER.info("String data length: " + strData.length());
+
+                // Check if string is actually JSON (starts with { or [)
+                String trimmed = strData.trim();
+                if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+                    LOGGER.fine("Received non-JSON string message: " + strData);
+                    // This is a control/event message, not data - ignore it
+                    return;
+                }
+
+                LOGGER.fine("Data is String, parsing to JSONObject");
                 json = new JSONObject(strData);
             } else {
                 LOGGER.warning("Received unexpected data type: " + data.getClass().getName());
