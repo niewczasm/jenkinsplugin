@@ -7,6 +7,24 @@
 
             <!-- Socket.IO Configuration Form -->
             <f:form method="post" action="configSubmit">
+                <f:section title="Base Host List">
+                    <f:entry title="Expected Hosts" field="baseHosts"
+                             description="Enter hostnames to monitor (one per line). Hosts not reported by Socket.IO will be marked as OFFLINE.">
+                        <f:textarea name="baseHosts" value="${it.baseHostsAsString}"
+                                    style="width: 100%; min-height: 120px; font-family: monospace;"
+                                    placeholder="server-01&#10;server-02&#10;server-03"/>
+                    </f:entry>
+
+                    <div style="margin-top: 10px; padding: 10px; background-color: #f0f0f0; border-left: 4px solid #4a90e2;">
+                        <strong>Base Host List:</strong>
+                        <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">
+                            Hosts listed here will always appear in the sidebar. If they are not present in Socket.IO
+                            messages, they will be shown as OFFLINE. This ensures you can track all expected hosts
+                            even when they're down.
+                        </p>
+                    </div>
+                </f:section>
+
                 <f:section title="Socket.IO Integration">
                     <j:set var="socketIOStatus" value="${it.socketIOStatus}"/>
 
@@ -72,13 +90,12 @@
                         <pre style="margin-top: 5px; background-color: white; padding: 8px; border-radius: 3px; font-size: 12px;">
 {
   "hostname": "server1.example.com",
-  "status": "ONLINE",
+  "status": "IDLE",
   "message": "All services running"
 }</pre>
                         <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">
                             The plugin will listen for events on the specified namespace and event name.
-                            Status values: ONLINE, UP, HEALTHY (green), WARNING, DEGRADED (yellow),
-                            OFFLINE, DOWN, ERROR (red), or any custom value (grey).
+                            Status values: IDLE, BUSY (green), ERROR, WAIT, OFFLINE (red), or any custom value (grey).
                         </p>
                     </div>
 
@@ -183,9 +200,8 @@ node {
             
             <h3>Status Values</h3>
             <ul>
-                <li><strong>ONLINE/UP/HEALTHY</strong> - Displayed in green</li>
-                <li><strong>WARNING/DEGRADED</strong> - Displayed in yellow</li>
-                <li><strong>OFFLINE/DOWN/ERROR</strong> - Displayed in red</li>
+                <li><strong>IDLE/BUSY</strong> - Displayed in green</li>
+                <li><strong>ERROR/WAIT/OFFLINE</strong> - Displayed in red</li>
                 <li><strong>UNKNOWN</strong> or any other value - Displayed in grey</li>
             </ul>
         </l:main-panel>

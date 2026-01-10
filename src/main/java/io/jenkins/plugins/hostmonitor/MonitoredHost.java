@@ -52,18 +52,12 @@ public class MonitoredHost implements Serializable {
     
     public String getStatusClass() {
         switch (status.toUpperCase()) {
-            case "ONLINE":
-            case "UP":
-            case "HEALTHY":
-                return "status-green";
+            case "IDLE":
             case "BUSY":
-                return "status-blue";
-            case "WARNING":
-            case "DEGRADED":
-                return "status-yellow";
-            case "OFFLINE":
-            case "DOWN":
+                return "status-green";
             case "ERROR":
+            case "WAIT":
+            case "OFFLINE":
                 return "status-red";
             default:
                 return "status-grey";

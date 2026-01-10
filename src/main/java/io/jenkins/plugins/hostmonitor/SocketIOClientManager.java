@@ -8,6 +8,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.net.URISyntaxException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -154,8 +157,8 @@ public class SocketIOClientManager {
      *
      * Where each resource array has:
      * - Index 0: hostname (String)
-     * - Index 7: status (String) - e.g., "IDLE", "BUSY", "ERROR"
-     * - Index 8: reservation (String) - e.g., "No", "Yes (user)"
+     * - Index 6: status (String) - e.g., "IDLE", "BUSY", "ERROR"
+     * - Index 7: reservation (String) - e.g., "No", "Yes (user)"
      */
     private void handleHostStatusMessage(Object data) {
         try {
@@ -232,6 +235,9 @@ public class SocketIOClientManager {
                 return;
             }
 
+            // Track which hosts were reported in this message
+            Set<String> reportedHosts = new HashSet<>();
+
             // Process each resource
             for (int i = 0; i < resourceCount; i++) {
                 try {
@@ -245,14 +251,17 @@ public class SocketIOClientManager {
 
                     // Extract data from array indices
                     String hostname = resource.getString(0);  // Index 0: hostname
-                    String status = resource.getString(7);     // Index 7: status (IDLE, BUSY, etc.)
-                    String reservation = resource.getString(8); // Index 8: reservation (No, Yes (user))
+                    String status = resource.getString(6);     // Index 6: status (IDLE, BUSY, etc.)
+                    String reservation = resource.getString(7); // Index 7: reservation (No, Yes (user))
 
                     // Validate hostname
                     if (hostname == null || hostname.trim().isEmpty()) {
                         LOGGER.warning("Resource at index " + i + " has empty hostname");
                         continue;
                     }
+
+                    // Track this host as reported
+                    reportedHosts.add(hostname);
 
                     // Map status to our status values
                     String mappedStatus = mapResourceStatus(status);
@@ -271,6 +280,19 @@ public class SocketIOClientManager {
             }
 
             LOGGER.info("Successfully processed " + resourceCount + " resources");
+
+            // Check for missing base hosts and mark them as OFFLINE
+            List<String> baseHosts = manager.getBaseHosts();
+            if (!baseHosts.isEmpty()) {
+                LOGGER.fine("Checking " + baseHosts.size() + " base hosts for missing hosts");
+
+                for (String baseHost : baseHosts) {
+                    if (!reportedHosts.contains(baseHost)) {
+                        LOGGER.fine("Base host not reported, marking as OFFLINE: " + baseHost);
+                        manager.updateHost(baseHost, "OFFLINE", "Not reported by Socket.IO");
+                    }
+                }
+            }
 
         } catch (JSONException e) {
             LOGGER.log(Level.WARNING, "Error parsing resources array", e);
@@ -309,7 +331,7 @@ public class SocketIOClientManager {
 
         switch (resourceStatus.toUpperCase()) {
             case "IDLE":
-                return "ONLINE";  // IDLE resources are available/online
+                return "IDLE";
             case "BUSY":
                 return "BUSY";
             case "ERROR":
@@ -317,7 +339,7 @@ public class SocketIOClientManager {
             case "OFFLINE":
                 return "OFFLINE";
             case "WAIT":
-                return "WARNING";  // WAIT status shown as warning
+                return "WAIT";
             default:
                 return resourceStatus.toUpperCase();
         }

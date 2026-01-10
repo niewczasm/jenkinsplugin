@@ -5,7 +5,12 @@
       "Bash(mvn clean package:*)",
       "Bash(ls:*)",
       "Bash(unzip:*)",
-      "Bash(mvn package:*)"
+      "Bash(mvn package:*)",
+      "Bash(while read hash msg)",
+      "Bash(do echo \"=== Commit: $msg ===\")",
+      "Bash(done)",
+      "Bash(git show:*)",
+      "Bash(tree:*)"
     ]
   }
 }

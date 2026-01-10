@@ -29,6 +29,9 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
 
     private ConcurrentHashMap<String, MonitoredHost> hosts = new ConcurrentHashMap<>();
 
+    // Base host list - hosts that should always be monitored
+    private CopyOnWriteArrayList<String> baseHosts = new CopyOnWriteArrayList<>();
+
     // Socket.IO configuration
     private boolean socketIOEnabled = false;
     private String socketIOHost = "localhost";
@@ -71,7 +74,14 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
         if (file.exists()) {
             try {
                 file.unmarshal(this);
-                LOGGER.info("Loaded host monitor configuration with " + hosts.size() + " hosts");
+
+                // Initialize baseHosts if null (backwards compatibility)
+                if (baseHosts == null) {
+                    baseHosts = new CopyOnWriteArrayList<>();
+                }
+
+                LOGGER.info("Loaded host monitor configuration with " + hosts.size() + " hosts and " +
+                           baseHosts.size() + " base hosts");
             } catch (IOException e) {
                 LOGGER.warning("Failed to load host monitor configuration: " + e.getMessage());
             }
@@ -142,7 +152,8 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
     public synchronized void save() throws IOException {
         getConfigFile().write(this);
         SaveableListener.fireOnChange(this, getConfigFile());
-        LOGGER.fine("Saved host monitor configuration with " + hosts.size() + " hosts");
+        LOGGER.fine("Saved host monitor configuration with " + hosts.size() + " hosts and " +
+                   baseHosts.size() + " base hosts");
     }
 
     /**
@@ -219,6 +230,46 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
         this.socketIOEventName = eventName;
     }
 
+    // Base host list getters and setters
+
+    /**
+     * Get base hosts list (returns a copy for safety)
+     */
+    public List<String> getBaseHosts() {
+        return new ArrayList<>(baseHosts);
+    }
+
+    /**
+     * Getter for XML serialization - returns actual field
+     */
+    public CopyOnWriteArrayList<String> getBaseHostsList() {
+        return baseHosts;
+    }
+
+    /**
+     * Setter for XML deserialization
+     */
+    public void setBaseHostsList(CopyOnWriteArrayList<String> baseHosts) {
+        this.baseHosts = baseHosts;
+    }
+
+    public String getBaseHostsAsString() {
+        return String.join("\n", baseHosts);
+    }
+
+    public void setBaseHostsFromString(String hostsString) {
+        baseHosts.clear();
+        if (hostsString != null && !hostsString.trim().isEmpty()) {
+            String[] hostArray = hostsString.split("[,\\n]+");
+            for (String host : hostArray) {
+                String trimmed = host.trim();
+                if (!trimmed.isEmpty()) {
+                    baseHosts.add(trimmed);
+                }
+            }
+        }
+    }
+
     /**
      * Handle Socket.IO configuration form submission
      */
@@ -228,6 +279,11 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
 
         JSONObject form = req.getSubmittedForm();
+
+        // Get base hosts configuration from form
+        String baseHostsInput = form.optString("baseHosts", "");
+        setBaseHostsFromString(baseHostsInput);
+        LOGGER.info("Base hosts updated: " + baseHosts.size() + " hosts configured");
 
         // Get Socket.IO configuration from form
         boolean wasEnabled = socketIOEnabled;
