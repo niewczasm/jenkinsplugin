@@ -305,8 +305,34 @@ public class SocketIOClientManager {
                 }
             }
 
+            // Clean up hosts that are no longer in base list and not reported by Socket.IO
+            cleanupStaleHosts(manager, reportedHosts, baseHosts);
+
         } catch (JSONException e) {
             LOGGER.log(Level.WARNING, "Error parsing resources array", e);
+        }
+    }
+
+    /**
+     * Clean up hosts that are no longer relevant
+     * Removes hosts that are:
+     * - Not reported in current Socket.IO message AND
+     * - Not in the base hosts list
+     */
+    private void cleanupStaleHosts(HostMonitorManager manager, Set<String> reportedHosts, List<String> baseHosts) {
+        List<MonitoredHost> currentHosts = manager.getHosts();
+
+        for (MonitoredHost host : currentHosts) {
+            String hostname = host.getHostname();
+
+            // Keep host if it's either reported or in base list
+            boolean isReported = reportedHosts.contains(hostname);
+            boolean isBaseHost = baseHosts.contains(hostname);
+
+            if (!isReported && !isBaseHost) {
+                LOGGER.fine("Removing stale host: " + hostname);
+                manager.removeHost(hostname);
+            }
         }
     }
 
