@@ -186,7 +186,7 @@ public class SocketIOClientManager {
                 String strData = (String) data;
                 LOGGER.info("String data length: " + strData.length());
 
-                // Check if string is actually JSON (starts with { or [)
+                // Check if string is actually JSON/Python dict (starts with { or [)
                 String trimmed = strData.trim();
                 if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
                     LOGGER.fine("Received non-JSON string message: " + strData);
@@ -194,8 +194,10 @@ public class SocketIOClientManager {
                     return;
                 }
 
-                LOGGER.fine("Data is String, parsing to JSONObject");
-                json = new JSONObject(strData);
+                LOGGER.fine("Data is String, converting Python dict to JSON and parsing");
+                // Convert Python dict syntax to JSON
+                String jsonString = convertPythonDictToJson(strData);
+                json = new JSONObject(jsonString);
             } else {
                 LOGGER.warning("Received unexpected data type: " + data.getClass().getName());
                 LOGGER.warning("Data value: " + data);
@@ -328,6 +330,26 @@ public class SocketIOClientManager {
         if (manager != null) {
             manager.updateHost(hostname, status, message);
         }
+    }
+
+    /**
+     * Convert Python dict string to valid JSON string
+     * Handles: single quotes -> double quotes, True -> true, False -> false, None -> null
+     */
+    private String convertPythonDictToJson(String pythonDict) {
+        String result = pythonDict;
+
+        // Replace Python literals with JSON equivalents
+        // Use word boundaries to avoid replacing inside strings
+        result = result.replaceAll("\\bNone\\b", "null");
+        result = result.replaceAll("\\bTrue\\b", "true");
+        result = result.replaceAll("\\bFalse\\b", "false");
+
+        // Replace single quotes with double quotes
+        // This works for most cases where strings don't contain quotes
+        result = result.replace("'", "\"");
+
+        return result;
     }
 
     /**
