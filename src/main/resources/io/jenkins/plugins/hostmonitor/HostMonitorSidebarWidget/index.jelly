@@ -105,7 +105,7 @@
                     // Wrap the text content in a span with link styling
                     var textContent = titleElement.textContent || titleElement.innerText;
                     var linkSpan = document.createElement('span');
-                    linkSpan.className = 'title-link';
+                    linkSpan.className = 'pane-header-title title-link';
                     linkSpan.textContent = textContent;
                     linkSpan.addEventListener('click', function(e) {
                         // Don't prevent the collapse functionality
