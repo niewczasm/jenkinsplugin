@@ -33,6 +33,10 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
     // Base host list - hosts that should always be monitored
     private CopyOnWriteArrayList<String> baseHosts = new CopyOnWriteArrayList<>();
 
+    // Expected counts for base hosts (hostname -> count)
+    // If not specified, default is 1
+    private ConcurrentHashMap<String, Integer> baseHostCounts = new ConcurrentHashMap<>();
+
     // Socket.IO configuration
     private boolean socketIOEnabled = false;
     private String socketIOHost = "localhost";
@@ -79,6 +83,11 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
                 // Initialize baseHosts if null (backwards compatibility)
                 if (baseHosts == null) {
                     baseHosts = new CopyOnWriteArrayList<>();
+                }
+
+                // Initialize baseHostCounts if null (backwards compatibility)
+                if (baseHostCounts == null) {
+                    baseHostCounts = new ConcurrentHashMap<>();
                 }
 
                 LOGGER.info("Loaded host monitor configuration with " + hosts.size() + " hosts and " +
@@ -302,20 +311,71 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
     }
 
     public String getBaseHostsAsString() {
-        return String.join("\n", baseHosts);
+        StringBuilder sb = new StringBuilder();
+        for (String hostname : baseHosts) {
+            sb.append(hostname);
+            Integer count = baseHostCounts.get(hostname);
+            if (count != null && count > 1) {
+                sb.append(" ").append(count);
+            }
+            sb.append("\n");
+        }
+        return sb.toString();
     }
 
     public void setBaseHostsFromString(String hostsString) {
         baseHosts.clear();
+        baseHostCounts.clear();
+
         if (hostsString != null && !hostsString.trim().isEmpty()) {
             String[] hostArray = hostsString.split("[,\\n]+");
-            for (String host : hostArray) {
-                String trimmed = host.trim();
+            for (String hostLine : hostArray) {
+                String trimmed = hostLine.trim();
                 if (!trimmed.isEmpty()) {
-                    baseHosts.add(trimmed);
+                    // Parse "hostname" or "hostname count"
+                    String[] parts = trimmed.split("\\s+");
+                    String hostname = parts[0];
+                    int count = 1; // Default count
+
+                    if (parts.length > 1) {
+                        try {
+                            count = Integer.parseInt(parts[1]);
+                            if (count < 1) {
+                                count = 1; // Ensure at least 1
+                            }
+                        } catch (NumberFormatException e) {
+                            LOGGER.warning("Invalid count for host " + hostname + ": " + parts[1] + ", using 1");
+                        }
+                    }
+
+                    baseHosts.add(hostname);
+                    if (count > 1) {
+                        baseHostCounts.put(hostname, count);
+                    }
                 }
             }
         }
+    }
+
+    /**
+     * Get expected count for a base host (default 1 if not specified)
+     */
+    public int getExpectedCount(String hostname) {
+        return baseHostCounts.getOrDefault(hostname, 1);
+    }
+
+    /**
+     * Getter for XML serialization
+     */
+    public ConcurrentHashMap<String, Integer> getBaseHostCountsMap() {
+        return baseHostCounts;
+    }
+
+    /**
+     * Setter for XML deserialization
+     */
+    public void setBaseHostCountsMap(ConcurrentHashMap<String, Integer> counts) {
+        this.baseHostCounts = counts;
     }
 
     /**

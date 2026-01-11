@@ -321,13 +321,33 @@ public class SocketIOClientManager {
             LOGGER.info("Successfully processed " + resourceCount + " resources");
 
             // Check for missing base hosts and mark them as OFFLINE
+            // This also checks if we have the expected count for each hostname
             if (!baseHosts.isEmpty()) {
                 LOGGER.fine("Checking " + baseHosts.size() + " base hosts for missing hosts");
 
+                // Count how many instances of each hostname we received
+                java.util.Map<String, Integer> receivedCounts = new java.util.HashMap<>();
+                for (String hostname : reportedHostnames) {
+                    receivedCounts.put(hostname, receivedCounts.getOrDefault(hostname, 0) + 1);
+                }
+
                 for (String baseHost : baseHosts) {
-                    if (!reportedHostnames.contains(baseHost)) {
+                    int expectedCount = manager.getExpectedCount(baseHost);
+                    int receivedCount = receivedCounts.getOrDefault(baseHost, 0);
+
+                    if (receivedCount == 0) {
+                        // No instances received - mark as OFFLINE
                         LOGGER.fine("Base host not reported, marking as OFFLINE: " + baseHost);
                         manager.updateHost(baseHost, "OFFLINE", "Not found in Autotest Registry");
+                    } else if (receivedCount < expectedCount) {
+                        // Fewer instances than expected - create OFFLINE placeholders for missing ones
+                        LOGGER.fine("Base host " + baseHost + " has " + receivedCount + " instances, expected " + expectedCount);
+
+                        for (int i = receivedCount; i < expectedCount; i++) {
+                            // Create placeholder OFFLINE host with synthetic id
+                            String syntheticId = baseHost + "-missing-" + (i + 1);
+                            manager.updateHost(baseHost, syntheticId, "OFFLINE", "Instance not found in Autotest Registry");
+                        }
                     }
                 }
             }
