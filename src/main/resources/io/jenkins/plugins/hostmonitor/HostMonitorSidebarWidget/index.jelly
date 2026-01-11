@@ -120,6 +120,18 @@
                         linkElement.href = rootUrl + '/host-monitor';
                         linkElement.className = 'pane-header-title title-link';
                         linkElement.textContent = textNode.nodeValue.trim();
+
+                        // Allow Ctrl+Click or middle-click to open link in new tab
+                        // But prevent normal click from navigating so Jenkins collapse works
+                        linkElement.addEventListener('click', function(e) {
+                            // Allow Ctrl+Click, Cmd+Click, or middle-click to open in new tab
+                            if (e.ctrlKey || e.metaKey || e.button === 1) {
+                                return; // Let browser handle it
+                            }
+                            // For normal clicks, prevent navigation so Jenkins collapse can work
+                            e.preventDefault();
+                        });
+
                         titleElement.replaceChild(linkElement, textNode);
                     }
                 }
@@ -281,8 +293,9 @@
             function refreshHostMonitor() {
                 if (!widgetContainer) return;
 
-                // CRITICAL: Do not fetch or update anything if collapsed
-                if (getSavedCollapseState()) {
+                // CRITICAL: Do not fetch or update anything if content is not visible
+                // Check actual DOM visibility instead of relying solely on localStorage
+                if (isContentCollapsed()) {
                     return; // Exit immediately, don't even fetch
                 }
 
@@ -301,8 +314,8 @@
                     throw new Error('Failed to fetch host monitor data');
                 })
                 .then(function(data) {
-                    // Triple-check before updating DOM
-                    if (getSavedCollapseState()) {
+                    // Double-check before updating DOM in case it was collapsed during fetch
+                    if (isContentCollapsed()) {
                         return; // Don't touch DOM
                     }
 
@@ -355,21 +368,18 @@
             // Setup collapse state listener
             setupCollapseListener();
 
-            // Enforce initial collapse state on page load
+            // Restore collapse state from previous session on page load
             setTimeout(function() {
-                enforceCollapseState();
+                if (getSavedCollapseState()) {
+                    enforceCollapseState();
+                }
             }, 200);
 
             // Start auto-refresh
             if (widgetContainer) {
                 setInterval(function() {
-                    // First enforce collapse (prevents any stray expansion)
-                    if (getSavedCollapseState()) {
-                        enforceCollapseState();
-                        // Skip refresh entirely when collapsed
-                        return;
-                    }
-                    // Only refresh when expanded
+                    // Only refresh when content is actually visible
+                    // Let Jenkins handle collapse/expand, we just detect it
                     refreshHostMonitor();
                 }, refreshInterval);
             }
