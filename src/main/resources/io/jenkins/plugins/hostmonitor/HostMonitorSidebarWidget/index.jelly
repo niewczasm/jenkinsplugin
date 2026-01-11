@@ -83,4 +83,53 @@
             background-color: #f5f5f5;
         }
     </style>
+
+    <script type="text/javascript">
+        // Auto-refresh the host monitor status every 5 seconds
+        (function() {
+            var refreshInterval = 5000; // 5 seconds
+            var widgetContainer = document.getElementById('host-monitor-status');
+
+            function refreshHostMonitor() {
+                if (!widgetContainer) return;
+
+                // Fetch updated content
+                fetch(window.location.pathname + 'host-monitor-widget/', {
+                    headers: {
+                        'Accept': 'text/html'
+                    }
+                })
+                .then(function(response) {
+                    if (response.ok) {
+                        return response.text();
+                    }
+                    throw new Error('Failed to fetch host monitor data');
+                })
+                .then(function(html) {
+                    // Parse the response and extract the table content
+                    var parser = new DOMParser();
+                    var doc = parser.parseFromString(html, 'text/html');
+                    var newContent = doc.getElementById('host-monitor-status');
+
+                    if (newContent) {
+                        // Replace only the inner content to avoid breaking event listeners
+                        var currentContent = widgetContainer.querySelector('.pane-content, table');
+                        var newInnerContent = newContent.querySelector('.pane-content, table');
+
+                        if (currentContent &amp;&amp; newInnerContent) {
+                            currentContent.parentNode.replaceChild(newInnerContent, currentContent);
+                        }
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Host monitor refresh error:', error);
+                });
+            }
+
+            // Start auto-refresh
+            if (widgetContainer) {
+                setInterval(refreshHostMonitor, refreshInterval);
+            }
+        })();
+    </script>
 </j:jelly>
