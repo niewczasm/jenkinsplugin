@@ -246,6 +246,21 @@ public class SocketIOClientManager {
                 return;
             }
 
+            // Clear all existing hosts that came from WebSocket (have an id field)
+            // This ensures we don't accumulate duplicates from previous messages
+            List<String> baseHosts = manager.getBaseHosts();
+            List<MonitoredHost> currentHosts = manager.getHosts();
+            for (MonitoredHost host : currentHosts) {
+                String id = host.getId();
+                String hostname = host.getHostname();
+                // Remove if it has an ID (from WS) and is not in base list
+                if (id != null && !id.isEmpty() && !baseHosts.contains(hostname)) {
+                    String key = id;
+                    manager.removeHost(key);
+                    LOGGER.fine("Cleared previous WS host before processing new message: " + hostname + " (id: " + id + ")");
+                }
+            }
+
             // Track which host IDs were reported in this message
             Set<String> reportedHostIds = new HashSet<>();
             // Also track hostnames to check base hosts
@@ -319,7 +334,6 @@ public class SocketIOClientManager {
             LOGGER.info("Successfully processed " + resourceCount + " resources");
 
             // Check for missing base hosts and mark them as OFFLINE
-            List<String> baseHosts = manager.getBaseHosts();
             if (!baseHosts.isEmpty()) {
                 LOGGER.fine("Checking " + baseHosts.size() + " base hosts for missing hosts");
 
@@ -331,40 +345,11 @@ public class SocketIOClientManager {
                 }
             }
 
-            // Clean up hosts that are no longer in base list and not reported by Socket.IO
-            cleanupStaleHosts(manager, reportedHostIds, reportedHostnames, baseHosts);
-
         } catch (JSONException e) {
             LOGGER.log(Level.WARNING, "Error parsing resources array", e);
         }
     }
 
-    /**
-     * Clean up hosts that are no longer relevant
-     * Removes hosts that are:
-     * - Not reported in current Socket.IO message AND
-     * - Not in the base hosts list
-     */
-    private void cleanupStaleHosts(HostMonitorManager manager, Set<String> reportedHostIds,
-                                   Set<String> reportedHostnames, List<String> baseHosts) {
-        List<MonitoredHost> currentHosts = manager.getHosts();
-
-        for (MonitoredHost host : currentHosts) {
-            String hostname = host.getHostname();
-            String id = host.getId();
-
-            // Keep host if it's either reported (by id or hostname) or in base list
-            boolean isReportedById = (id != null && reportedHostIds.contains(id));
-            boolean isReportedByName = reportedHostnames.contains(hostname);
-            boolean isBaseHost = baseHosts.contains(hostname);
-
-            if (!isReportedById && !isReportedByName && !isBaseHost) {
-                LOGGER.fine("Removing stale host: " + hostname + " (id: " + id + ")");
-                String key = (id != null && !id.isEmpty()) ? id : hostname;
-                manager.removeHost(key);
-            }
-        }
-    }
 
     /**
      * Parse simple format (backward compatibility)
