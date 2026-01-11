@@ -90,34 +90,117 @@
             var refreshInterval = 5000; // 5 seconds
             var widgetContainer = document.getElementById('host-monitor-status');
 
+            function createHostRow(host) {
+                var tr = document.createElement('tr');
+                tr.className = 'host-monitor-row';
+
+                var td = document.createElement('td');
+                td.className = 'pane';
+                td.style.padding = '6px';
+
+                var flexDiv = document.createElement('div');
+                flexDiv.style.display = 'flex';
+                flexDiv.style.alignItems = 'center';
+                flexDiv.style.justifyContent = 'space-between';
+
+                var infoDiv = document.createElement('div');
+                infoDiv.style.flex = '1';
+                infoDiv.style.minWidth = '0';
+
+                var hostnameDiv = document.createElement('div');
+                hostnameDiv.style.fontWeight = '500';
+                hostnameDiv.style.whiteSpace = 'nowrap';
+                hostnameDiv.style.overflow = 'hidden';
+                hostnameDiv.style.textOverflow = 'ellipsis';
+                hostnameDiv.title = host.hostname;
+                hostnameDiv.textContent = host.hostname;
+
+                infoDiv.appendChild(hostnameDiv);
+
+                if (host.statusMessage) {
+                    var messageDiv = document.createElement('div');
+                    messageDiv.style.fontSize = '11px';
+                    messageDiv.style.color = '#666';
+                    messageDiv.style.whiteSpace = 'nowrap';
+                    messageDiv.style.overflow = 'hidden';
+                    messageDiv.style.textOverflow = 'ellipsis';
+                    messageDiv.title = host.statusMessage;
+                    messageDiv.textContent = host.statusMessage;
+                    infoDiv.appendChild(messageDiv);
+                }
+
+                var statusDiv = document.createElement('div');
+                statusDiv.style.marginLeft = '8px';
+
+                var statusBadge = document.createElement('span');
+                statusBadge.className = 'status-badge-small ' + host.statusClass;
+                statusBadge.textContent = host.status;
+
+                statusDiv.appendChild(statusBadge);
+                flexDiv.appendChild(infoDiv);
+                flexDiv.appendChild(statusDiv);
+                td.appendChild(flexDiv);
+                tr.appendChild(td);
+
+                return tr;
+            }
+
             function refreshHostMonitor() {
                 if (!widgetContainer) return;
 
-                // Fetch updated content
-                fetch(window.location.pathname + 'host-monitor-widget/', {
+                var rootUrl = (typeof window.rootURL !== 'undefined' &amp;&amp; window.rootURL) ? window.rootURL : '';
+
+                // Fetch updated host data from JSON endpoint
+                fetch(rootUrl + '/host-monitor/hostsJson', {
                     headers: {
-                        'Accept': 'text/html'
+                        'Accept': 'application/json'
                     }
                 })
                 .then(function(response) {
                     if (response.ok) {
-                        return response.text();
+                        return response.json();
                     }
                     throw new Error('Failed to fetch host monitor data');
                 })
-                .then(function(html) {
-                    // Parse the response and extract the table content
-                    var parser = new DOMParser();
-                    var doc = parser.parseFromString(html, 'text/html');
-                    var newContent = doc.getElementById('host-monitor-status');
+                .then(function(data) {
+                    var hosts = data.hosts;
+                    var tableBody = widgetContainer.querySelector('tbody');
 
-                    if (newContent) {
-                        // Replace only the inner content to avoid breaking event listeners
-                        var currentContent = widgetContainer.querySelector('.pane-content, table');
-                        var newInnerContent = newContent.querySelector('.pane-content, table');
+                    if (hosts.length === 0) {
+                        // Show "no hosts" message
+                        var noHostsDiv = document.createElement('div');
+                        noHostsDiv.className = 'pane-content';
+                        noHostsDiv.style.padding = '8px';
+                        noHostsDiv.style.color = '#666';
+                        noHostsDiv.textContent = 'No hosts monitored';
 
-                        if (currentContent &amp;&amp; newInnerContent) {
-                            currentContent.parentNode.replaceChild(newInnerContent, currentContent);
+                        var table = widgetContainer.querySelector('table');
+                        if (table) {
+                            table.parentNode.replaceChild(noHostsDiv, table);
+                        }
+                    } else {
+                        // Update table with new hosts
+                        if (!tableBody) {
+                            // Create table if it doesn't exist
+                            var paneContent = widgetContainer.querySelector('.pane-content');
+                            if (paneContent) {
+                                var table = document.createElement('table');
+                                table.className = 'pane';
+                                table.style.width = '100%';
+                                tableBody = document.createElement('tbody');
+                                table.appendChild(tableBody);
+                                paneContent.parentNode.replaceChild(table, paneContent);
+                            }
+                        }
+
+                        if (tableBody) {
+                            // Clear existing rows
+                            tableBody.innerHTML = '';
+
+                            // Add new rows
+                            hosts.forEach(function(host) {
+                                tableBody.appendChild(createHostRow(host));
+                            });
                         }
                     }
                 })

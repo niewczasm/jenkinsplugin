@@ -9,6 +9,7 @@ import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.verb.GET;
 import org.kohsuke.stapler.verb.POST;
 
 import javax.servlet.ServletException;
@@ -268,6 +269,34 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
                 }
             }
         }
+    }
+
+    /**
+     * AJAX endpoint to get current host status as JSON
+     */
+    @GET
+    public void doHostsJson(StaplerRequest req, StaplerResponse rsp) throws IOException {
+        // Get hosts from sidebar widget (already sorted)
+        HostMonitorSidebarWidget widget = new HostMonitorSidebarWidget();
+        List<MonitoredHost> sortedHosts = widget.getHosts();
+
+        // Build JSON response
+        JSONObject response = new JSONObject();
+        net.sf.json.JSONArray hostsArray = new net.sf.json.JSONArray();
+
+        for (MonitoredHost host : sortedHosts) {
+            JSONObject hostJson = new JSONObject();
+            hostJson.put("hostname", host.getHostname());
+            hostJson.put("status", host.getStatus());
+            hostJson.put("statusMessage", host.getStatusMessage());
+            hostJson.put("statusClass", host.getStatusClass());
+            hostsArray.add(hostJson);
+        }
+
+        response.put("hosts", hostsArray);
+
+        rsp.setContentType("application/json");
+        rsp.getWriter().print(response.toString());
     }
 
     /**
