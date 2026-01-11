@@ -10,14 +10,26 @@ public class MonitoredHost implements Serializable {
     private static final long serialVersionUID = 1L;
     
     private final String hostname;
+    private String id;          // Unique identifier from WS message (index 2)
     private String status;
     private String statusMessage;
     private long lastUpdated;
     private String reservedBy;  // Username who reserved the host
     private String testPath;    // Test path being executed
-    
+
+    // Transient fields (not serialized)
+    private transient String displayName;  // Hostname with count for duplicates
+
     public MonitoredHost(String hostname) {
         this.hostname = hostname;
+        this.status = "UNKNOWN";
+        this.statusMessage = "";
+        this.lastUpdated = System.currentTimeMillis();
+    }
+
+    public MonitoredHost(String hostname, String id) {
+        this.hostname = hostname;
+        this.id = id;
         this.status = "UNKNOWN";
         this.statusMessage = "";
         this.lastUpdated = System.currentTimeMillis();
@@ -25,6 +37,26 @@ public class MonitoredHost implements Serializable {
     
     public String getHostname() {
         return hostname;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    /**
+     * Get the display name (hostname with count for duplicates)
+     * This is set by HostMonitorManager when retrieving hosts
+     */
+    public String getDisplayName() {
+        return displayName != null ? displayName : hostname;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
     }
     
     public String getStatus() {

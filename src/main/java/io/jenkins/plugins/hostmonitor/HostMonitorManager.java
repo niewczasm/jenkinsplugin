@@ -110,10 +110,29 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
     }
     
     /**
-     * Update or add a host with status
+     * Update or add a host with status (for pipeline step - backward compatibility)
      */
     public MonitoredHost updateHost(String hostname, String status, String message) {
+        // For pipeline step, use hostname as both key and id
         MonitoredHost host = hosts.computeIfAbsent(hostname, MonitoredHost::new);
+        host.setStatus(status);
+        host.setStatusMessage(message != null ? message : "");
+        try {
+            save();
+        } catch (IOException e) {
+            LOGGER.warning("Failed to save host monitor data: " + e.getMessage());
+        }
+        return host;
+    }
+
+    /**
+     * Update or add a host with status using unique id (for WebSocket messages)
+     */
+    public MonitoredHost updateHost(String hostname, String id, String status, String message) {
+        // Use id as the unique key
+        String key = id != null && !id.isEmpty() ? id : hostname;
+        MonitoredHost host = hosts.computeIfAbsent(key, k -> new MonitoredHost(hostname, id));
+        host.setId(id);
         host.setStatus(status);
         host.setStatusMessage(message != null ? message : "");
         try {
@@ -137,10 +156,37 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
     }
     
     /**
-     * Get all monitored hosts
+     * Get all monitored hosts with display names calculated for duplicates
      */
     public List<MonitoredHost> getHosts() {
-        return new ArrayList<>(hosts.values());
+        List<MonitoredHost> hostList = new ArrayList<>(hosts.values());
+
+        // Count occurrences of each hostname
+        java.util.Map<String, Integer> hostnameCounts = new java.util.HashMap<>();
+        java.util.Map<String, Integer> hostnameIndices = new java.util.HashMap<>();
+
+        for (MonitoredHost host : hostList) {
+            String hostname = host.getHostname();
+            hostnameCounts.put(hostname, hostnameCounts.getOrDefault(hostname, 0) + 1);
+        }
+
+        // Set display names with counts for duplicates
+        for (MonitoredHost host : hostList) {
+            String hostname = host.getHostname();
+            int totalCount = hostnameCounts.get(hostname);
+
+            if (totalCount > 1) {
+                // Multiple hosts with same name - add count
+                int currentIndex = hostnameIndices.getOrDefault(hostname, 0) + 1;
+                hostnameIndices.put(hostname, currentIndex);
+                host.setDisplayName(hostname + " (" + currentIndex + "/" + totalCount + ")");
+            } else {
+                // Single host with this name - no count needed
+                host.setDisplayName(hostname);
+            }
+        }
+
+        return hostList;
     }
     
     /**
@@ -287,7 +333,7 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
 
         for (MonitoredHost host : sortedHosts) {
             JSONObject hostJson = new JSONObject();
-            hostJson.put("hostname", host.getHostname());
+            hostJson.put("hostname", host.getDisplayName());  // Use displayName with count
             hostJson.put("status", host.getStatus());
             hostJson.put("statusMessage", host.getStatusMessage());
             hostJson.put("displayMessage", host.getDisplayMessage());

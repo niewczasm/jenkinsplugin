@@ -18,8 +18,8 @@
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <div style="flex: 1; min-width: 0; overflow: hidden;">
                                             <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
-                                                 title="${host.hostname}">
-                                                ${host.hostname}
+                                                 title="${host.displayName}">
+                                                ${host.displayName}
                                             </div>
                                             <j:set var="displayMsg" value="${host.displayMessage}"/>
                                             <j:if test="${!empty(displayMsg)}">

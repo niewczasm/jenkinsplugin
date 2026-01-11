@@ -246,8 +246,10 @@ public class SocketIOClientManager {
                 return;
             }
 
-            // Track which hosts were reported in this message
-            Set<String> reportedHosts = new HashSet<>();
+            // Track which host IDs were reported in this message
+            Set<String> reportedHostIds = new HashSet<>();
+            // Also track hostnames to check base hosts
+            Set<String> reportedHostnames = new HashSet<>();
 
             // Process each resource
             for (int i = 0; i < resourceCount; i++) {
@@ -262,6 +264,7 @@ public class SocketIOClientManager {
 
                     // Extract data from array indices
                     String hostname = resource.getString(0);  // Index 0: hostname
+                    String id = resource.getString(2);         // Index 2: unique identifier
                     String status = resource.getString(6);     // Index 6: status (IDLE, BUSY, etc.)
                     String reservation = resource.getString(7); // Index 7: reservation (No, Yes (user))
 
@@ -276,14 +279,19 @@ public class SocketIOClientManager {
                         }
                     }
 
-                    // Validate hostname
+                    // Validate hostname and id
                     if (hostname == null || hostname.trim().isEmpty()) {
                         LOGGER.warning("Resource at index " + i + " has empty hostname");
                         continue;
                     }
+                    if (id == null || id.trim().isEmpty()) {
+                        LOGGER.warning("Resource at index " + i + " has empty id");
+                        continue;
+                    }
 
-                    // Track this host as reported
-                    reportedHosts.add(hostname);
+                    // Track this host ID and hostname as reported
+                    reportedHostIds.add(id);
+                    reportedHostnames.add(hostname);
 
                     // Map status to our status values
                     String mappedStatus = mapResourceStatus(status);
@@ -294,10 +302,10 @@ public class SocketIOClientManager {
                     // Build message from reservation info (for backward compatibility)
                     String message = buildReservationMessage(reservation);
 
-                    LOGGER.fine("Updating host: " + hostname + " -> " + mappedStatus + " (reserved by: " + reservedBy + ", test path: " + testPath + ")");
+                    LOGGER.fine("Updating host: " + hostname + " (id: " + id + ") -> " + mappedStatus + " (reserved by: " + reservedBy + ", test path: " + testPath + ")");
 
-                    // Update host status with new fields
-                    MonitoredHost host = manager.updateHost(hostname, mappedStatus, message);
+                    // Update host status with id
+                    MonitoredHost host = manager.updateHost(hostname, id, mappedStatus, message);
                     if (host != null) {
                         host.setReservedBy(reservedBy);
                         host.setTestPath(testPath);
@@ -316,7 +324,7 @@ public class SocketIOClientManager {
                 LOGGER.fine("Checking " + baseHosts.size() + " base hosts for missing hosts");
 
                 for (String baseHost : baseHosts) {
-                    if (!reportedHosts.contains(baseHost)) {
+                    if (!reportedHostnames.contains(baseHost)) {
                         LOGGER.fine("Base host not reported, marking as OFFLINE: " + baseHost);
                         manager.updateHost(baseHost, "OFFLINE", "Not found in Autotest Registry");
                     }
@@ -324,7 +332,7 @@ public class SocketIOClientManager {
             }
 
             // Clean up hosts that are no longer in base list and not reported by Socket.IO
-            cleanupStaleHosts(manager, reportedHosts, baseHosts);
+            cleanupStaleHosts(manager, reportedHostIds, reportedHostnames, baseHosts);
 
         } catch (JSONException e) {
             LOGGER.log(Level.WARNING, "Error parsing resources array", e);
@@ -337,19 +345,23 @@ public class SocketIOClientManager {
      * - Not reported in current Socket.IO message AND
      * - Not in the base hosts list
      */
-    private void cleanupStaleHosts(HostMonitorManager manager, Set<String> reportedHosts, List<String> baseHosts) {
+    private void cleanupStaleHosts(HostMonitorManager manager, Set<String> reportedHostIds,
+                                   Set<String> reportedHostnames, List<String> baseHosts) {
         List<MonitoredHost> currentHosts = manager.getHosts();
 
         for (MonitoredHost host : currentHosts) {
             String hostname = host.getHostname();
+            String id = host.getId();
 
-            // Keep host if it's either reported or in base list
-            boolean isReported = reportedHosts.contains(hostname);
+            // Keep host if it's either reported (by id or hostname) or in base list
+            boolean isReportedById = (id != null && reportedHostIds.contains(id));
+            boolean isReportedByName = reportedHostnames.contains(hostname);
             boolean isBaseHost = baseHosts.contains(hostname);
 
-            if (!isReported && !isBaseHost) {
-                LOGGER.fine("Removing stale host: " + hostname);
-                manager.removeHost(hostname);
+            if (!isReportedById && !isReportedByName && !isBaseHost) {
+                LOGGER.fine("Removing stale host: " + hostname + " (id: " + id + ")");
+                String key = (id != null && !id.isEmpty()) ? id : hostname;
+                manager.removeHost(key);
             }
         }
     }
