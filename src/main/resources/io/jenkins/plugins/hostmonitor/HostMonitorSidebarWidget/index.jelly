@@ -45,6 +45,16 @@
     </l:pane>
     
     <style>
+        #host-monitor-status .title-link {
+            color: #0066cc;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        #host-monitor-status .title-link:hover {
+            color: #003d99;
+        }
+
         #host-monitor-status .status-badge-small {
             display: inline-block;
             padding: 2px 6px;
@@ -86,17 +96,24 @@
     </style>
 
     <script type="text/javascript">
-        // Make the widget title clickable
+        // Make the widget title text clickable and styled like a link
         (function() {
             var widgetContainer = document.getElementById('host-monitor-status');
             if (widgetContainer) {
                 var titleElement = widgetContainer.querySelector('.pane-header, .pane > .pane-header, h2');
                 if (titleElement) {
-                    titleElement.style.cursor = 'pointer';
-                    titleElement.addEventListener('click', function(e) {
+                    // Wrap the text content in a span with link styling
+                    var textContent = titleElement.textContent || titleElement.innerText;
+                    var linkSpan = document.createElement('span');
+                    linkSpan.className = 'title-link';
+                    linkSpan.textContent = textContent;
+                    linkSpan.addEventListener('click', function(e) {
+                        e.stopPropagation();
                         var rootUrl = (typeof window.rootURL !== 'undefined' &amp;&amp; window.rootURL) ? window.rootURL : '';
                         window.location.href = rootUrl + '/host-monitor';
                     });
+                    titleElement.textContent = '';
+                    titleElement.appendChild(linkSpan);
                 }
             }
         })();
