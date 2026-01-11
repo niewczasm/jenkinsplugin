@@ -13,6 +13,8 @@ public class MonitoredHost implements Serializable {
     private String status;
     private String statusMessage;
     private long lastUpdated;
+    private String reservedBy;  // Username who reserved the host
+    private String testPath;    // Test path being executed
     
     public MonitoredHost(String hostname) {
         this.hostname = hostname;
@@ -62,5 +64,47 @@ public class MonitoredHost implements Serializable {
             default:
                 return "status-grey";
         }
+    }
+
+    public String getReservedBy() {
+        return reservedBy;
+    }
+
+    public void setReservedBy(String reservedBy) {
+        this.reservedBy = reservedBy;
+    }
+
+    public String getTestPath() {
+        return testPath;
+    }
+
+    public void setTestPath(String testPath) {
+        this.testPath = testPath;
+    }
+
+    /**
+     * Get the display message to show below hostname in sidebar
+     * Priority:
+     * 1. If reserved: "Reserved by (user)"
+     * 2. If not reserved but BUSY: show test path
+     * 3. Otherwise: show statusMessage or "Available"
+     */
+    public String getDisplayMessage() {
+        // Priority 1: If reserved, show reservation info
+        if (reservedBy != null && !reservedBy.isEmpty()) {
+            return "Reserved by " + reservedBy;
+        }
+
+        // Priority 2: If BUSY and has test path, show test path
+        if ("BUSY".equalsIgnoreCase(status) && testPath != null && !testPath.isEmpty()) {
+            return testPath;
+        }
+
+        // Priority 3: Show statusMessage or "Available"
+        if (statusMessage != null && !statusMessage.isEmpty()) {
+            return statusMessage;
+        }
+
+        return "Available";
     }
 }

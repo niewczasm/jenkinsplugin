@@ -17,14 +17,15 @@
                                 <td class="pane" style="padding: 6px;">
                                     <div style="display: flex; align-items: center; justify-content: space-between;">
                                         <div style="flex: 1; min-width: 0;">
-                                            <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" 
+                                            <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
                                                  title="${host.hostname}">
                                                 ${host.hostname}
                                             </div>
-                                            <j:if test="${!empty(host.statusMessage)}">
+                                            <j:set var="displayMsg" value="${host.displayMessage}"/>
+                                            <j:if test="${!empty(displayMsg)}">
                                                 <div style="font-size: 11px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
-                                                     title="${host.statusMessage}">
-                                                    ${host.statusMessage}
+                                                     title="${displayMsg}">
+                                                    ${displayMsg}
                                                 </div>
                                             </j:if>
                                         </div>
@@ -117,15 +118,15 @@
 
                 infoDiv.appendChild(hostnameDiv);
 
-                if (host.statusMessage) {
+                if (host.displayMessage) {
                     var messageDiv = document.createElement('div');
                     messageDiv.style.fontSize = '11px';
                     messageDiv.style.color = '#666';
                     messageDiv.style.whiteSpace = 'nowrap';
                     messageDiv.style.overflow = 'hidden';
                     messageDiv.style.textOverflow = 'ellipsis';
-                    messageDiv.title = host.statusMessage;
-                    messageDiv.textContent = host.statusMessage;
+                    messageDiv.title = host.displayMessage;
+                    messageDiv.textContent = host.displayMessage;
                     infoDiv.appendChild(messageDiv);
                 }
 

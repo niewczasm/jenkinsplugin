@@ -112,7 +112,7 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
     /**
      * Update or add a host with status
      */
-    public void updateHost(String hostname, String status, String message) {
+    public MonitoredHost updateHost(String hostname, String status, String message) {
         MonitoredHost host = hosts.computeIfAbsent(hostname, MonitoredHost::new);
         host.setStatus(status);
         host.setStatusMessage(message != null ? message : "");
@@ -121,6 +121,7 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
         } catch (IOException e) {
             LOGGER.warning("Failed to save host monitor data: " + e.getMessage());
         }
+        return host;
     }
     
     /**
@@ -289,6 +290,7 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
             hostJson.put("hostname", host.getHostname());
             hostJson.put("status", host.getStatus());
             hostJson.put("statusMessage", host.getStatusMessage());
+            hostJson.put("displayMessage", host.getDisplayMessage());
             hostJson.put("statusClass", host.getStatusClass());
             hostsArray.add(hostJson);
         }

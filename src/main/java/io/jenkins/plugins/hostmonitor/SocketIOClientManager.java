@@ -265,6 +265,17 @@ public class SocketIOClientManager {
                     String status = resource.getString(6);     // Index 6: status (IDLE, BUSY, etc.)
                     String reservation = resource.getString(7); // Index 7: reservation (No, Yes (user))
 
+                    // Get the last element from the array (test path)
+                    String testPath = null;
+                    int lastIndex = resource.length() - 1;
+                    if (lastIndex >= 0 && !resource.isNull(lastIndex)) {
+                        testPath = resource.optString(lastIndex, null);
+                        // Process test path to skip everything until 5th "/"
+                        if (testPath != null && !testPath.isEmpty()) {
+                            testPath = processTestPath(testPath);
+                        }
+                    }
+
                     // Validate hostname
                     if (hostname == null || hostname.trim().isEmpty()) {
                         LOGGER.warning("Resource at index " + i + " has empty hostname");
@@ -277,13 +288,20 @@ public class SocketIOClientManager {
                     // Map status to our status values
                     String mappedStatus = mapResourceStatus(status);
 
-                    // Build message from reservation info
+                    // Extract username from reservation field
+                    String reservedBy = extractReservedBy(reservation);
+
+                    // Build message from reservation info (for backward compatibility)
                     String message = buildReservationMessage(reservation);
 
-                    LOGGER.fine("Updating host: " + hostname + " -> " + mappedStatus + " (" + message + ")");
+                    LOGGER.fine("Updating host: " + hostname + " -> " + mappedStatus + " (reserved by: " + reservedBy + ", test path: " + testPath + ")");
 
-                    // Update host status
-                    manager.updateHost(hostname, mappedStatus, message);
+                    // Update host status with new fields
+                    MonitoredHost host = manager.updateHost(hostname, mappedStatus, message);
+                    if (host != null) {
+                        host.setReservedBy(reservedBy);
+                        host.setTestPath(testPath);
+                    }
 
                 } catch (JSONException e) {
                     LOGGER.log(Level.WARNING, "Error parsing resource at index " + i, e);
@@ -426,6 +444,65 @@ public class SocketIOClientManager {
         } else {
             return res;
         }
+    }
+
+    /**
+     * Extract username from reservation field
+     * Format: "Yes (username)" -> "username"
+     *         "No" -> null
+     */
+    private String extractReservedBy(String reservation) {
+        if (reservation == null || reservation.trim().isEmpty()) {
+            return null;
+        }
+
+        String res = reservation.trim();
+
+        if (res.equalsIgnoreCase("No")) {
+            return null;
+        } else if (res.toLowerCase().startsWith("yes")) {
+            // Extract user from "Yes (username)" format
+            int start = res.indexOf('(');
+            int end = res.indexOf(')');
+            if (start != -1 && end != -1 && end > start) {
+                return res.substring(start + 1, end);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Process test path to skip everything until the 5th "/" sign
+     * Example: /jenkins/tmp/ldb2-server-7/workspace/Maintenance/...
+     *       -> /Maintenance/...
+     */
+    private String processTestPath(String testPath) {
+        if (testPath == null || testPath.isEmpty()) {
+            return null;
+        }
+
+        int slashCount = 0;
+        int position = 0;
+
+        // Count slashes and find position of the 5th one
+        for (int i = 0; i < testPath.length(); i++) {
+            if (testPath.charAt(i) == '/') {
+                slashCount++;
+                if (slashCount == 5) {
+                    position = i;
+                    break;
+                }
+            }
+        }
+
+        // If we found 5 slashes, return substring from that position
+        if (slashCount >= 5) {
+            return testPath.substring(position);
+        }
+
+        // If less than 5 slashes, return the original path
+        return testPath;
     }
     
     /**
