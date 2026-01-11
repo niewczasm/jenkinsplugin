@@ -15,8 +15,8 @@
                         <j:forEach var="host" items="${hosts}">
                             <tr class="host-monitor-row">
                                 <td class="pane" style="padding: 6px;">
-                                    <div style="display: flex; align-items: center; justify-content: space-between;">
-                                        <div style="flex: 1; min-width: 0;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <div style="flex: 1; min-width: 0; overflow: hidden;">
                                             <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
                                                  title="${host.hostname}">
                                                 ${host.hostname}
@@ -29,7 +29,7 @@
                                                 </div>
                                             </j:if>
                                         </div>
-                                        <div style="margin-left: 8px;">
+                                        <div style="flex-shrink: 0;">
                                             <span class="status-badge-small ${host.statusClass}">
                                                 ${host.status}
                                             </span>
@@ -102,11 +102,12 @@
                 var flexDiv = document.createElement('div');
                 flexDiv.style.display = 'flex';
                 flexDiv.style.alignItems = 'center';
-                flexDiv.style.justifyContent = 'space-between';
+                flexDiv.style.gap = '8px';
 
                 var infoDiv = document.createElement('div');
                 infoDiv.style.flex = '1';
                 infoDiv.style.minWidth = '0';
+                infoDiv.style.overflow = 'hidden';
 
                 var hostnameDiv = document.createElement('div');
                 hostnameDiv.style.fontWeight = '500';
@@ -131,7 +132,7 @@
                 }
 
                 var statusDiv = document.createElement('div');
-                statusDiv.style.marginLeft = '8px';
+                statusDiv.style.flexShrink = '0';
 
                 var statusBadge = document.createElement('span');
                 statusBadge.className = 'status-badge-small ' + host.statusClass;

@@ -473,36 +473,31 @@ public class SocketIOClientManager {
     }
 
     /**
-     * Process test path to skip everything until the 5th "/" sign
-     * Example: /jenkins/tmp/ldb2-server-7/workspace/Maintenance/...
-     *       -> /Maintenance/...
+     * Process test path to show only the last two path segments
+     * Example: /jenkins/tmp/ldb2-server-8/workspace/Maintenance/Check_test_pool/build-debug/test/net/link/_nios/test_net_link.exe
+     *       -> _nios/test_net_link.exe
      */
     private String processTestPath(String testPath) {
         if (testPath == null || testPath.isEmpty()) {
             return null;
         }
 
-        int slashCount = 0;
-        int position = 0;
-
-        // Count slashes and find position of the 5th one
-        for (int i = 0; i < testPath.length(); i++) {
-            if (testPath.charAt(i) == '/') {
-                slashCount++;
-                if (slashCount == 5) {
-                    position = i;
-                    break;
-                }
-            }
+        // Find the last slash
+        int lastSlash = testPath.lastIndexOf('/');
+        if (lastSlash == -1) {
+            // No slash found, return original
+            return testPath;
         }
 
-        // If we found 5 slashes, return substring from that position
-        if (slashCount >= 5) {
-            return testPath.substring(position);
+        // Find the second-to-last slash
+        int secondLastSlash = testPath.lastIndexOf('/', lastSlash - 1);
+        if (secondLastSlash == -1) {
+            // Only one slash found, return from the beginning
+            return testPath;
         }
 
-        // If less than 5 slashes, return the original path
-        return testPath;
+        // Return everything from second-to-last slash + 1 to the end
+        return testPath.substring(secondLastSlash + 1);
     }
     
     /**
