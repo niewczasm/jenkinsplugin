@@ -246,20 +246,7 @@ public class SocketIOClientManager {
                 return;
             }
 
-            // Clear all existing hosts that came from WebSocket (have an id field)
-            // This ensures we don't accumulate duplicates from previous messages
             List<String> baseHosts = manager.getBaseHosts();
-            List<MonitoredHost> currentHosts = manager.getHosts();
-            for (MonitoredHost host : currentHosts) {
-                String id = host.getId();
-                String hostname = host.getHostname();
-                // Remove if it has an ID (from WS) and is not in base list
-                if (id != null && !id.isEmpty() && !baseHosts.contains(hostname)) {
-                    String key = id;
-                    manager.removeHost(key);
-                    LOGGER.fine("Cleared previous WS host before processing new message: " + hostname + " (id: " + id + ")");
-                }
-            }
 
             // Track which host IDs were reported in this message
             Set<String> reportedHostIds = new HashSet<>();
@@ -342,6 +329,23 @@ public class SocketIOClientManager {
                         LOGGER.fine("Base host not reported, marking as OFFLINE: " + baseHost);
                         manager.updateHost(baseHost, "OFFLINE", "Not found in Autotest Registry");
                     }
+                }
+            }
+
+            // Clean up old WS hosts that weren't in this message
+            // This happens at the END to avoid showing incomplete list during processing
+            List<MonitoredHost> currentHosts = manager.getHosts();
+            for (MonitoredHost host : currentHosts) {
+                String id = host.getId();
+                String hostname = host.getHostname();
+
+                // Remove if it has an ID (from WS), is not in base list, and was NOT in this message
+                if (id != null && !id.isEmpty() &&
+                    !baseHosts.contains(hostname) &&
+                    !reportedHostIds.contains(id)) {
+                    String key = id;
+                    manager.removeHost(key);
+                    LOGGER.fine("Removed old WS host not in current message: " + hostname + " (id: " + id + ")");
                 }
             }
 
