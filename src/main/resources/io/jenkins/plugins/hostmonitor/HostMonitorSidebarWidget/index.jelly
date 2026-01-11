@@ -281,11 +281,9 @@
             function refreshHostMonitor() {
                 if (!widgetContainer) return;
 
-                // Check if should be collapsed - if so, don't update
+                // CRITICAL: Do not fetch or update anything if collapsed
                 if (getSavedCollapseState()) {
-                    // Enforce collapse state in case it got expanded
-                    enforceCollapseState();
-                    return;
+                    return; // Exit immediately, don't even fetch
                 }
 
                 var rootUrl = (typeof window.rootURL !== 'undefined' &amp;&amp; window.rootURL) ? window.rootURL : '';
@@ -303,10 +301,9 @@
                     throw new Error('Failed to fetch host monitor data');
                 })
                 .then(function(data) {
-                    // Check again before updating DOM
+                    // Triple-check before updating DOM
                     if (getSavedCollapseState()) {
-                        enforceCollapseState();
-                        return;
+                        return; // Don't touch DOM
                     }
 
                     var hosts = data.hosts;
@@ -358,13 +355,21 @@
             // Setup collapse state listener
             setupCollapseListener();
 
-            // Enforce initial collapse state
-            enforceCollapseState();
+            // Enforce initial collapse state on page load
+            setTimeout(function() {
+                enforceCollapseState();
+            }, 200);
 
-            // Start auto-refresh with collapse enforcement
+            // Start auto-refresh
             if (widgetContainer) {
                 setInterval(function() {
-                    enforceCollapseState();
+                    // First enforce collapse (prevents any stray expansion)
+                    if (getSavedCollapseState()) {
+                        enforceCollapseState();
+                        // Skip refresh entirely when collapsed
+                        return;
+                    }
+                    // Only refresh when expanded
                     refreshHostMonitor();
                 }, refreshInterval);
             }
