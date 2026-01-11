@@ -4,11 +4,16 @@ A Jenkins plugin that adds a sidebar widget to display the status of external ho
 
 ## Features
 
-- **Sidebar Widget**: Similar to "Build Executor Status", displays monitored hosts in the Jenkins sidebar
+- **Sidebar Widget**: Similar to "Build Executor Status", displays monitored hosts in the Jenkins sidebar with auto-refresh
 - **Pipeline Integration**: Update host status directly from Jenkinsfile using the `updateHostStatus` step
+- **Socket.IO Integration**: Real-time host status updates from external monitoring systems
+- **Duplicate Host Support**: Track multiple instances of the same hostname with automatic counting (e.g., host-1 (1/3), host-1 (2/3))
+- **Base Host List**: Configure expected hosts with instance counts to track missing hosts as OFFLINE
+- **Display Modes**: Choose between showing all duplicate instances or aggregated view with best status
 - **Status Colors**: Visual indicators (green/yellow/red/grey) for different host states
-- **Management Interface**: View all monitored hosts in Jenkins management section
+- **Management Interface**: View all monitored hosts in Jenkins management section with clickable title
 - **Persistent Storage**: Host statuses persist across Jenkins restarts
+- **Smart Sorting**: OFFLINE hosts first, then base configured hosts, then others (alphabetically)
 
 ## Installation
 
@@ -145,22 +150,76 @@ The plugin automatically applies colors based on the status value:
 
 | Status | Color | Use Case |
 |--------|-------|----------|
-| `ONLINE`, `UP`, `HEALTHY` | 🟢 Green | Host is functioning normally |
+| `IDLE`, `BUSY`, `ONLINE`, `UP`, `HEALTHY` | 🟢 Green | Host is functioning normally |
 | `WARNING`, `DEGRADED` | 🟡 Yellow | Host has issues but is operational |
-| `OFFLINE`, `DOWN`, `ERROR` | 🔴 Red | Host is not functioning |
+| `WAIT`, `ERROR`, `OFFLINE`, `DOWN` | 🔴 Red | Host is not functioning or waiting |
 | `UNKNOWN` or any other | ⚪ Grey | Status not determined |
 
 Status values are case-insensitive.
+
+**Note**: When using Socket.IO integration, the plugin recognizes `IDLE` (available) and `BUSY` (in use) states from external systems like Autotest.
+
+## Configuration
+
+### Base Host List
+
+Configure which hosts should always be monitored:
+
+1. Go to Jenkins → Manage Jenkins → Host Monitor
+2. In the "Base Host List" section, enter hostnames (one per line)
+3. Optionally specify expected instance count after hostname: `hostname count`
+
+**Example:**
+```
+web-server-01
+db-server-01 2
+cache-server-01 3
+api-server-01
+```
+
+This configuration:
+- Expects 1 instance of `web-server-01` and `api-server-01`
+- Expects 2 instances of `db-server-01`
+- Expects 3 instances of `cache-server-01`
+- If fewer instances are reported, missing ones will show as OFFLINE
+
+### Display Mode
+
+Choose how duplicate hosts are displayed:
+
+- **Show all duplicates** (checked): Display each instance separately with counts
+  ```
+  db-server-01 (1/2) - IDLE
+  db-server-01 (2/2) - BUSY
+  ```
+
+- **Aggregate view** (unchecked): Show one entry per hostname with best status
+  ```
+  db-server-01 - IDLE
+  ```
+
+  Priority: IDLE/BUSY > WAIT > ERROR/OFFLINE > UNKNOWN
+
+### Socket.IO Integration
+
+For real-time monitoring from external systems:
+
+1. Enable Socket.IO in configuration
+2. Configure server host, port, namespace, and event name
+3. External systems send host status updates via Socket.IO
+
+See [SOCKETIO_INTEGRATION.md](SOCKETIO_INTEGRATION.md) for details.
 
 ## Viewing Host Status
 
 ### Sidebar Widget
 
 The host monitor widget appears automatically in the Jenkins sidebar when there are monitored hosts. It shows:
-- Hostname
+- Hostname (with count for duplicates)
 - Current status (with color coding)
-- Status message
-- Last updated timestamp
+- Status message (reservation info or test path)
+- Auto-refreshes every 5 seconds
+- Clickable title to access configuration
 
 ### Management Page
 
@@ -168,6 +227,7 @@ Access the full list of monitored hosts:
 1. Go to Jenkins → Manage Jenkins
 2. Click on "Host Monitor"
 3. View all hosts with their complete status information
+4. Configure base hosts and display settings
 
 ## Example Use Cases
 
@@ -330,7 +390,50 @@ For issues and questions:
 - File an issue on the project repository
 - Check Jenkins plugin documentation at https://jenkins.io/doc/developer/plugin-development/
 
+## Advanced Features
+
+### Duplicate Host Tracking
+
+When using Socket.IO integration, the plugin can track multiple instances of the same hostname:
+
+**Automatic Counting:**
+```
+host-1 (1/3) - IDLE
+host-1 (2/3) - BUSY
+host-1 (3/3) - OFFLINE
+```
+
+**Expected Count Validation:**
+- Configure expected counts in base host list: `host-1 3`
+- If fewer instances report, missing ones show as OFFLINE
+- Helps ensure all expected instances are running
+
+**Display Modes:**
+- All duplicates: See status of each instance
+- Aggregated: See overall best status per hostname
+
+### Real-Time Updates
+
+The sidebar widget auto-refreshes every 5 seconds to show latest status without page reload.
+
+### Smart Host Sorting
+
+Hosts are displayed in priority order:
+1. OFFLINE hosts (highlighted first for attention)
+2. Base configured hosts (your critical infrastructure)
+3. Other hosts (alphabetically)
+
 ## Changelog
+
+### Version 1.7+
+- Added Socket.IO integration for real-time updates
+- Duplicate hostname support with automatic counting
+- Base host list with expected instance counts
+- Display mode option (all duplicates vs aggregated)
+- Auto-refresh sidebar widget
+- Clickable widget title
+- Smart host sorting
+- Reservation and test path tracking
 
 ### Version 1.0-SNAPSHOT
 - Initial release

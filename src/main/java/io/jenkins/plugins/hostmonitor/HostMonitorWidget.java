@@ -3,6 +3,8 @@ package io.jenkins.plugins.hostmonitor;
 import hudson.Extension;
 import hudson.model.PageDecorator;
 import jenkins.model.Jenkins;
+import org.kohsuke.stapler.Stapler;
+import org.kohsuke.stapler.StaplerRequest;
 
 import java.util.List;
 
@@ -43,9 +45,33 @@ public class HostMonitorWidget extends PageDecorator {
     }
 
     /**
+     * Check if we're on the main Jenkins page
+     */
+    private boolean isMainPage() {
+        StaplerRequest request = Stapler.getCurrentRequest();
+        if (request == null) {
+            return false;
+        }
+
+        // Get the request URI path
+        String requestUri = request.getRequestURI();
+        String contextPath = request.getContextPath();
+
+        // Remove context path to get the actual page path
+        String pagePath = requestUri;
+        if (contextPath != null && !contextPath.isEmpty() && requestUri.startsWith(contextPath)) {
+            pagePath = requestUri.substring(contextPath.length());
+        }
+
+        // Main page is root ("/") or just the context path
+        return pagePath.equals("/") || pagePath.equals("") || pagePath.equals("/view/all/");
+    }
+
+    /**
      * Check if the widget should be displayed
+     * Only show on main page and when there are hosts to monitor
      */
     public boolean isEnabled() {
-        return !getHosts().isEmpty();
+        return isMainPage() && !getHosts().isEmpty();
     }
 }

@@ -14,20 +14,44 @@ The Host Monitor Plugin now supports **real-time updates via Socket.IO**. Instea
 
 ### Features:
 - ✅ Real-time host status updates
+- ✅ Duplicate hostname tracking with automatic counting
+- ✅ Base host list with expected instance counts
+- ✅ Display mode options (all duplicates vs aggregated)
 - ✅ Automatic reconnection with exponential backoff
 - ✅ Configurable server host, port, namespace, and event name
 - ✅ Connection status monitoring
+- ✅ Supports both simple and array-based message formats
 - ✅ Backward compatible - Pipeline step still works
 
 ## Configuration
 
 ### 1. Access Configuration Page
 
-Navigate to: **Manage Jenkins → System**
+Navigate to: **Manage Jenkins → Host Monitor**
 
-Scroll down to find: **Host Monitor - Socket.IO Integration**
+### 2. Configuration Sections
 
-### 2. Configuration Fields
+#### Base Host List
+
+Configure expected hosts with optional instance counts:
+
+```
+web-server-01
+db-server-01 2
+cache-server-01 3
+```
+
+**Format:** `hostname [count]`
+- If count is omitted, expects 1 instance
+- If fewer instances are reported, missing ones show as OFFLINE
+
+#### Display Mode
+
+**Show all duplicates checkbox:**
+- ✅ Checked: Display each instance with count (e.g., `host-1 (1/2)`, `host-1 (2/2)`)
+- ❌ Unchecked: Show one aggregated entry per hostname with best status
+
+#### Socket.IO Integration
 
 | Field | Description | Default | Example |
 |-------|-------------|---------|---------|
@@ -51,9 +75,11 @@ This connects to: `http://monitor.example.com:3000/jenkins` and listens for `hos
 
 ## Socket.IO Server Requirements
 
-### Message Format
+### Message Formats
 
-Your Socket.IO server must emit events with the following JSON format:
+The plugin supports two message formats:
+
+#### 1. Simple Format (Basic Monitoring)
 
 ```json
 {
@@ -63,22 +89,77 @@ Your Socket.IO server must emit events with the following JSON format:
 }
 ```
 
-### Field Descriptions
-
+**Fields:**
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
-| `hostname` | ✅ Yes | String | Unique identifier for the host |
-| `status` | ❌ No | String | Status value (see below) | 
+| `hostname` | ✅ Yes | String | Hostname or identifier |
+| `status` | ❌ No | String | Status value (see below) |
 | `message` | ❌ No | String | Additional status message |
+
+#### 2. Array Format (Advanced - Autotest Compatible)
+
+For tracking multiple instances of the same hostname:
+
+```json
+{
+  "resources": [
+    [
+      "host-1",          // Index 0: hostname
+      "other-data",      // Index 1: (unused)
+      "unique-id-123",   // Index 2: unique identifier
+      "more-data",       // Indices 3-5: (unused)
+      "more-data",
+      "more-data",
+      "IDLE",            // Index 6: status
+      "No",              // Index 7: reservation (or "Yes (username)")
+      "extra-data",      // Index 8: (unused)
+      "/path/to/test"    // Index 9+: test path (optional)
+    ],
+    [
+      "host-1",          // Same hostname
+      "other-data",
+      "unique-id-456",   // Different unique identifier
+      "more-data",
+      "more-data",
+      "more-data",
+      "BUSY",            // Different status
+      "Yes (john)",      // Reserved by john
+      "extra-data",
+      "/tests/integration"
+    ]
+  ]
+}
+```
+
+**Key Points:**
+- Each array represents one host instance
+- Index 2 contains unique identifier (required for duplicate tracking)
+- Multiple arrays with same hostname (index 0) are tracked as separate instances
+- Plugin displays with counts: `host-1 (1/2)`, `host-1 (2/2)`
 
 ### Status Values
 
 | Status | Display Color | Use Case |
 |--------|--------------|----------|
-| `ONLINE`, `UP`, `HEALTHY` | 🟢 Green | Host is operational |
+| `IDLE`, `BUSY`, `ONLINE`, `UP`, `HEALTHY` | 🟢 Green | Host is operational |
 | `WARNING`, `DEGRADED` | 🟡 Yellow | Host has issues but running |
-| `OFFLINE`, `DOWN`, `ERROR` | 🔴 Red | Host is down or failed |
+| `WAIT`, `ERROR`, `OFFLINE`, `DOWN` | 🔴 Red | Host is not functioning or waiting |
 | Any other value | ⚪ Grey | Unknown status |
+
+### Duplicate Host Tracking
+
+When multiple instances report with the same hostname:
+
+1. **Unique Identifier** (index 2): Distinguishes instances internally
+2. **Automatic Counting**: Plugin calculates and displays counts
+3. **Expected Count Validation**: Compare against base host list configuration
+
+**Example with 3 instances:**
+```
+host-1 (1/3) - IDLE
+host-1 (2/3) - BUSY
+host-1 (3/3) - OFFLINE
+```
 
 ## Example Socket.IO Server
 
@@ -363,18 +444,72 @@ If you're currently using only pipeline updates:
 
 No data loss - all methods write to the same storage.
 
+## Display Modes
+
+### Show All Duplicates (Default)
+
+Each instance displayed separately with count:
+
+```
+db-server-01 (1/2) - IDLE - Reserved by alice
+db-server-01 (2/2) - BUSY - Running test suite
+cache-server-01 (1/3) - IDLE - Available
+cache-server-01 (2/3) - IDLE - Available
+cache-server-01 (3/3) - OFFLINE - Not found in registry
+```
+
+**Use Case:** Monitor individual instance status, see which specific instances are down
+
+### Aggregated View
+
+One entry per hostname showing best status:
+
+```
+db-server-01 - IDLE
+cache-server-01 - IDLE
+```
+
+**Status Priority:** IDLE/BUSY > WAIT > ERROR/OFFLINE > UNKNOWN
+
+**Use Case:** Simplified view, only care if ANY instance is available
+
+## Expected Count Validation
+
+Configure expected instance counts in base host list:
+
+```
+web-server-01
+db-server-01 2
+cache-server-01 3
+```
+
+**Behavior:**
+- If 0 instances report: Shows 1 OFFLINE entry
+- If 1 instance reports (expected 2): Shows 1 real + 1 OFFLINE placeholder
+- If 2 instances report (expected 2): Shows both instances
+- If 3+ instances report (expected 2): Shows all received instances
+
+**Benefits:**
+- Alert when instances are missing
+- Track expected vs actual deployment
+- Detect infrastructure issues early
+
 ## Summary
 
-✅ Real-time host monitoring via Socket.IO  
-✅ Easy configuration in Jenkins System settings  
-✅ Connection status monitoring  
-✅ Automatic reconnection  
-✅ Backward compatible with pipeline step  
-✅ Flexible message format  
-✅ Multiple status types with color coding  
+✅ Real-time host monitoring via Socket.IO
+✅ Duplicate hostname tracking with automatic counting
+✅ Expected instance count validation
+✅ Flexible display modes (all vs aggregated)
+✅ Easy configuration in Host Monitor page
+✅ Connection status monitoring
+✅ Automatic reconnection
+✅ Backward compatible with pipeline step
+✅ Supports simple and array-based formats
+✅ Multiple status types with color coding
+✅ Smart host sorting (OFFLINE first)
+✅ Auto-refresh sidebar widget
 
 ---
 
-**Plugin Version:** 1.1  
-**Plugin File:** target/host-monitor.hpi (719KB)  
+**Plugin Version:** 1.7+
 **Socket.IO Client:** v2.1.0

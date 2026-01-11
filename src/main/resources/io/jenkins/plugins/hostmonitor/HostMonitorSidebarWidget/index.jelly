@@ -130,6 +130,63 @@
         (function() {
             var refreshInterval = 5000; // 5 seconds
             var widgetContainer = document.getElementById('host-monitor-status');
+            var COLLAPSE_STATE_KEY = 'hostMonitorCollapseState';
+
+            // Helper function to check if pane is collapsed
+            function isPaneCollapsed() {
+                if (!widgetContainer) return false;
+
+                // Check for Jenkins collapse patterns
+                var paneFrame = widgetContainer.closest('.pane-frame');
+                if (paneFrame) {
+                    // Check if content is hidden
+                    var content = paneFrame.querySelector('.pane-content, table');
+                    if (content) {
+                        return content.style.display === 'none' ||
+                               window.getComputedStyle(content).display === 'none';
+                    }
+                }
+
+                // Check localStorage as fallback
+                try {
+                    return localStorage.getItem(COLLAPSE_STATE_KEY) === 'true';
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            // Helper function to set collapse state
+            function setCollapseState(collapsed) {
+                try {
+                    localStorage.setItem(COLLAPSE_STATE_KEY, collapsed ? 'true' : 'false');
+                } catch (e) {
+                    // Ignore localStorage errors
+                }
+            }
+
+            // Monitor collapse state changes
+            function monitorCollapseChanges() {
+                if (!widgetContainer) return;
+
+                var paneFrame = widgetContainer.closest('.pane-frame');
+                if (paneFrame) {
+                    var observer = new MutationObserver(function(mutations) {
+                        mutations.forEach(function(mutation) {
+                            if (mutation.type === 'attributes' || mutation.type === 'childList') {
+                                var collapsed = isPaneCollapsed();
+                                setCollapseState(collapsed);
+                            }
+                        });
+                    });
+
+                    observer.observe(paneFrame, {
+                        attributes: true,
+                        childList: true,
+                        subtree: true,
+                        attributeFilter: ['style', 'class']
+                    });
+                }
+            }
 
             function createHostRow(host) {
                 var tr = document.createElement('tr');
@@ -190,6 +247,11 @@
             function refreshHostMonitor() {
                 if (!widgetContainer) return;
 
+                // Check if pane is currently collapsed - if so, don't update to avoid flickering
+                if (isPaneCollapsed()) {
+                    return;
+                }
+
                 var rootUrl = (typeof window.rootURL !== 'undefined' &amp;&amp; window.rootURL) ? window.rootURL : '';
 
                 // Fetch updated host data from JSON endpoint
@@ -205,6 +267,11 @@
                     throw new Error('Failed to fetch host monitor data');
                 })
                 .then(function(data) {
+                    // Double-check collapse state before updating DOM
+                    if (isPaneCollapsed()) {
+                        return;
+                    }
+
                     var hosts = data.hosts;
                     var tableBody = widgetContainer.querySelector('tbody');
 
@@ -250,6 +317,9 @@
                     console.error('Host monitor refresh error:', error);
                 });
             }
+
+            // Start monitoring collapse state changes
+            monitorCollapseChanges();
 
             // Start auto-refresh
             if (widgetContainer) {

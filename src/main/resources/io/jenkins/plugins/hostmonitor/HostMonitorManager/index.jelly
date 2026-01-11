@@ -15,19 +15,29 @@
                                     placeholder="server-01&#10;server-02 2&#10;server-03"/>
                     </f:entry>
 
-                    <f:entry title="Display Mode" field="showAllDuplicates">
+                    <f:entry title="Display Mode" field="showAllDuplicates"
+                             description="Controls how duplicate hosts (same hostname, different instances) are displayed in the sidebar.">
                         <f:checkbox name="showAllDuplicates" checked="${it.showAllDuplicates}"/>
                         Show all duplicate hosts with counts (e.g., host-1 (1/2), host-1 (2/2))
                     </f:entry>
 
                     <div style="margin-top: 10px; padding: 10px; background-color: #f0f0f0; border-left: 4px solid #4a90e2;">
-                        <strong>Base Host List:</strong>
-                        <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">
-                            Hosts listed here will always appear in the sidebar. If they are not present in Socket.IO
-                            messages, they will be shown as OFFLINE. You can specify expected count after hostname
-                            (e.g., "host-1 3" expects 3 instances). When "Show all duplicates" is unchecked, only
-                            one aggregated entry per hostname will be shown with the best status.
+                        <strong>Configuration Guide:</strong>
+                        <p style="margin: 8px 0 4px 0; font-size: 12px; color: #666;">
+                            <strong>Base Host List:</strong> Hosts listed here will always appear in the sidebar.
+                            If they are not present in Socket.IO messages, they will be shown as OFFLINE.
                         </p>
+                        <p style="margin: 4px 0; font-size: 12px; color: #666;">
+                            <strong>Expected Counts:</strong> Add a number after hostname (e.g., "host-1 3") to expect
+                            3 instances. If fewer instances report, missing ones will show as OFFLINE placeholders.
+                        </p>
+                        <p style="margin: 4px 0; font-size: 12px; color: #666;">
+                            <strong>Display Modes:</strong>
+                        </p>
+                        <ul style="margin: 2px 0 0 20px; font-size: 12px; color: #666;">
+                            <li><strong>Checked:</strong> Show each instance separately (e.g., "db-01 (1/2) - IDLE", "db-01 (2/2) - BUSY")</li>
+                            <li><strong>Unchecked:</strong> Show one aggregated entry per hostname with best status (e.g., "db-01 - IDLE")</li>
+                        </ul>
                     </div>
                 </f:section>
 
@@ -92,16 +102,30 @@
                     </f:entry>
 
                     <div style="margin-top: 10px; padding: 10px; background-color: #f0f0f0; border-left: 4px solid #4a90e2;">
-                        <strong>Socket.IO Message Format:</strong>
-                        <pre style="margin-top: 5px; background-color: white; padding: 8px; border-radius: 3px; font-size: 12px;">
+                        <strong>Socket.IO Message Formats:</strong>
+                        <p style="margin: 4px 0; font-size: 12px; color: #666;">
+                            <strong>Simple Format:</strong> (Single host per message)
+                        </p>
+                        <pre style="margin-top: 2px; background-color: white; padding: 8px; border-radius: 3px; font-size: 11px;">
 {
   "hostname": "server1.example.com",
   "status": "IDLE",
   "message": "All services running"
 }</pre>
+                        <p style="margin: 8px 0 4px 0; font-size: 12px; color: #666;">
+                            <strong>Array Format:</strong> (Multiple instances, supports duplicate tracking)
+                        </p>
+                        <pre style="margin-top: 2px; background-color: white; padding: 8px; border-radius: 3px; font-size: 11px;">
+{
+  "resources": [
+    ["hostname", "data", "unique-id", ..., "status", "reservation", ...]
+  ]
+}</pre>
                         <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">
-                            The plugin will listen for events on the specified namespace and event name.
-                            Status values: IDLE, BUSY (green), ERROR, WAIT, OFFLINE (red), or any custom value (grey).
+                            <strong>Status values:</strong> IDLE, BUSY (green) | WARNING, DEGRADED (yellow) |
+                            WAIT, ERROR, OFFLINE (red) | others (grey).
+                            See <a href="https://github.com/yourusername/host-monitor-plugin/blob/main/SOCKETIO_INTEGRATION.md"
+                               target="_blank">SOCKETIO_INTEGRATION.md</a> for detailed format specifications.
                         </p>
                     </div>
 
