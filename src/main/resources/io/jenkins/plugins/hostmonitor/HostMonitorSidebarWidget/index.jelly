@@ -46,13 +46,13 @@
     
     <style>
         #host-monitor-status .title-link {
-            color: #0066cc;
+            color: inherit;
             text-decoration: underline;
             cursor: pointer;
         }
 
         #host-monitor-status .title-link:hover {
-            color: #003d99;
+            color: #0066cc;
         }
 
         #host-monitor-status .status-badge-small {
@@ -108,7 +108,7 @@
                     linkSpan.className = 'title-link';
                     linkSpan.textContent = textContent;
                     linkSpan.addEventListener('click', function(e) {
-                        e.stopPropagation();
+                        // Don't prevent the collapse functionality
                         var rootUrl = (typeof window.rootURL !== 'undefined' &amp;&amp; window.rootURL) ? window.rootURL : '';
                         window.location.href = rootUrl + '/host-monitor';
                     });
