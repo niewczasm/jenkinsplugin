@@ -1,6 +1,11 @@
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout" xmlns:f="/lib/form">
-    <l:pane width="2" title="Autotest Executors Status" id="host-monitor-status">
+    <l:pane width="2" id="host-monitor-status">
+        <div class="pane-header">
+            <a href="${rootURL}/host-monitor" style="color: inherit; text-decoration: none;">
+                Autotest Executors Status
+            </a>
+        </div>
         <j:set var="hosts" value="${it.hosts}"/>
         
         <j:choose>
@@ -45,6 +50,17 @@
     </l:pane>
     
     <style>
+        #host-monitor-status .pane-header {
+            font-weight: bold;
+            padding: 4px 8px;
+            background-color: #f5f5f5;
+            border-bottom: 1px solid #d9d9d9;
+        }
+
+        #host-monitor-status .pane-header a:hover {
+            text-decoration: underline;
+        }
+
         #host-monitor-status .status-badge-small {
             display: inline-block;
             padding: 2px 6px;
