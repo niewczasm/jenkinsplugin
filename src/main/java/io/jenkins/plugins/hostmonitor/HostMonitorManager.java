@@ -37,6 +37,9 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
     // If not specified, default is 1
     private ConcurrentHashMap<String, Integer> baseHostCounts = new ConcurrentHashMap<>();
 
+    // Display configuration
+    private boolean showAllDuplicates = true; // Default: show all duplicates with counts
+
     // Socket.IO configuration
     private boolean socketIOEnabled = false;
     private String socketIOHost = "localhost";
@@ -170,6 +173,12 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
     public List<MonitoredHost> getHosts() {
         List<MonitoredHost> hostList = new ArrayList<>(hosts.values());
 
+        if (!showAllDuplicates) {
+            // Aggregate duplicates - show only one entry per hostname
+            return aggregateDuplicateHosts(hostList);
+        }
+
+        // Show all duplicates with counts
         // Count occurrences of each hostname
         java.util.Map<String, Integer> hostnameCounts = new java.util.HashMap<>();
         java.util.Map<String, Integer> hostnameIndices = new java.util.HashMap<>();
@@ -196,6 +205,85 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
         }
 
         return hostList;
+    }
+
+    /**
+     * Aggregate duplicate hosts into single entries
+     * Shows the "best" status for each hostname:
+     * - IDLE/BUSY > WAIT > ERROR/OFFLINE > UNKNOWN
+     */
+    private List<MonitoredHost> aggregateDuplicateHosts(List<MonitoredHost> hostList) {
+        java.util.Map<String, List<MonitoredHost>> groupedByHostname = new java.util.HashMap<>();
+
+        // Group hosts by hostname
+        for (MonitoredHost host : hostList) {
+            String hostname = host.getHostname();
+            groupedByHostname.computeIfAbsent(hostname, k -> new ArrayList<>()).add(host);
+        }
+
+        // Create aggregated list with one entry per hostname
+        List<MonitoredHost> aggregated = new ArrayList<>();
+
+        for (java.util.Map.Entry<String, List<MonitoredHost>> entry : groupedByHostname.entrySet()) {
+            String hostname = entry.getKey();
+            List<MonitoredHost> instances = entry.getValue();
+
+            if (instances.size() == 1) {
+                // Single instance - use as is
+                MonitoredHost host = instances.get(0);
+                host.setDisplayName(hostname);
+                aggregated.add(host);
+            } else {
+                // Multiple instances - pick the best one
+                MonitoredHost best = selectBestHost(instances);
+                best.setDisplayName(hostname);
+                aggregated.add(best);
+            }
+        }
+
+        return aggregated;
+    }
+
+    /**
+     * Select the "best" host from multiple instances
+     * Priority: IDLE/BUSY > WAIT > ERROR/OFFLINE > UNKNOWN
+     */
+    private MonitoredHost selectBestHost(List<MonitoredHost> instances) {
+        MonitoredHost best = instances.get(0);
+        int bestPriority = getStatusPriority(best.getStatus());
+
+        for (int i = 1; i < instances.size(); i++) {
+            MonitoredHost candidate = instances.get(i);
+            int candidatePriority = getStatusPriority(candidate.getStatus());
+
+            if (candidatePriority < bestPriority) {
+                best = candidate;
+                bestPriority = candidatePriority;
+            }
+        }
+
+        return best;
+    }
+
+    /**
+     * Get priority for status (lower is better)
+     */
+    private int getStatusPriority(String status) {
+        if (status == null) return 100;
+
+        switch (status.toUpperCase()) {
+            case "IDLE":
+            case "BUSY":
+                return 1;
+            case "WAIT":
+                return 2;
+            case "ERROR":
+            case "OFFLINE":
+            case "DOWN":
+                return 3;
+            default:
+                return 4; // UNKNOWN and others
+        }
     }
     
     /**
@@ -225,6 +313,15 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
      */
     public void setHostsMap(ConcurrentHashMap<String, MonitoredHost> hosts) {
         this.hosts = hosts;
+    }
+
+    // Display configuration getters/setters
+    public boolean isShowAllDuplicates() {
+        return showAllDuplicates;
+    }
+
+    public void setShowAllDuplicates(boolean showAllDuplicates) {
+        this.showAllDuplicates = showAllDuplicates;
     }
 
     // Socket.IO Getters
@@ -421,6 +518,10 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
         String baseHostsInput = form.optString("baseHosts", "");
         setBaseHostsFromString(baseHostsInput);
         LOGGER.info("Base hosts updated: " + baseHosts.size() + " hosts configured");
+
+        // Get display configuration
+        showAllDuplicates = form.optBoolean("showAllDuplicates", true);
+        LOGGER.info("Show all duplicates: " + showAllDuplicates);
 
         // Get Socket.IO configuration from form
         boolean wasEnabled = socketIOEnabled;

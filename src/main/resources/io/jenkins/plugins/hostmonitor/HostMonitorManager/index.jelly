@@ -9,18 +9,24 @@
             <f:form method="post" action="configSubmit">
                 <f:section title="Base Host List">
                     <f:entry title="Expected Hosts" field="baseHosts"
-                             description="Enter hostnames to monitor (one per line). Hosts not reported by Socket.IO will be marked as OFFLINE.">
+                             description="Enter hostnames to monitor (one per line). Add expected count after hostname (e.g., 'host-1 3' for 3 instances).">
                         <f:textarea name="baseHosts" value="${it.baseHostsAsString}"
                                     style="width: 100%; min-height: 120px; font-family: monospace;"
-                                    placeholder="server-01&#10;server-02&#10;server-03"/>
+                                    placeholder="server-01&#10;server-02 2&#10;server-03"/>
+                    </f:entry>
+
+                    <f:entry title="Display Mode" field="showAllDuplicates">
+                        <f:checkbox name="showAllDuplicates" checked="${it.showAllDuplicates}"/>
+                        Show all duplicate hosts with counts (e.g., host-1 (1/2), host-1 (2/2))
                     </f:entry>
 
                     <div style="margin-top: 10px; padding: 10px; background-color: #f0f0f0; border-left: 4px solid #4a90e2;">
                         <strong>Base Host List:</strong>
                         <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">
                             Hosts listed here will always appear in the sidebar. If they are not present in Socket.IO
-                            messages, they will be shown as OFFLINE. This ensures you can track all expected hosts
-                            even when they're down.
+                            messages, they will be shown as OFFLINE. You can specify expected count after hostname
+                            (e.g., "host-1 3" expects 3 instances). When "Show all duplicates" is unchecked, only
+                            one aggregated entry per hostname will be shown with the best status.
                         </p>
                     </div>
                 </f:section>
