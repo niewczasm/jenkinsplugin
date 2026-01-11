@@ -102,18 +102,15 @@
             if (widgetContainer) {
                 var titleElement = widgetContainer.querySelector('.pane-header, .pane > .pane-header, h2');
                 if (titleElement) {
-                    // Wrap the text content in a span with link styling
+                    // Wrap the text content in an actual anchor tag
                     var textContent = titleElement.textContent || titleElement.innerText;
-                    var linkSpan = document.createElement('span');
-                    linkSpan.className = 'pane-header-title title-link';
-                    linkSpan.textContent = textContent;
-                    linkSpan.addEventListener('click', function(e) {
-                        // Don't prevent the collapse functionality
-                        var rootUrl = (typeof window.rootURL !== 'undefined' &amp;&amp; window.rootURL) ? window.rootURL : '';
-                        window.location.href = rootUrl + '/host-monitor';
-                    });
+                    var rootUrl = (typeof window.rootURL !== 'undefined' &amp;&amp; window.rootURL) ? window.rootURL : '';
+                    var linkElement = document.createElement('a');
+                    linkElement.href = rootUrl + '/host-monitor';
+                    linkElement.className = 'pane-header-title title-link';
+                    linkElement.textContent = textContent;
                     titleElement.textContent = '';
-                    titleElement.appendChild(linkSpan);
+                    titleElement.appendChild(linkElement);
                 }
             }
         })();
