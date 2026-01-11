@@ -132,22 +132,38 @@
             var widgetContainer = document.getElementById('host-monitor-status');
             var COLLAPSE_STATE_KEY = 'hostMonitorCollapseState';
 
-            // Helper function to check if pane is collapsed
-            function isPaneCollapsed() {
-                if (!widgetContainer) return false;
+            // Helper function to get content elements
+            function getContentElements() {
+                if (!widgetContainer) return [];
 
-                // Check for Jenkins collapse patterns
-                var paneFrame = widgetContainer.closest('.pane-frame');
-                if (paneFrame) {
-                    // Check if content is hidden
-                    var content = paneFrame.querySelector('.pane-content, table');
-                    if (content) {
-                        return content.style.display === 'none' ||
-                               window.getComputedStyle(content).display === 'none';
+                var elements = [];
+                // Get the table (main content)
+                var table = widgetContainer.querySelector('table');
+                if (table) elements.push(table);
+
+                // Get any pane-content divs
+                var paneContent = widgetContainer.querySelectorAll('.pane-content');
+                paneContent.forEach(function(el) { elements.push(el); });
+
+                return elements;
+            }
+
+            // Helper function to check if content is actually collapsed
+            function isContentCollapsed() {
+                var contentElements = getContentElements();
+                if (contentElements.length === 0) return false;
+
+                for (var i = 0; i &lt; contentElements.length; i++) {
+                    var style = window.getComputedStyle(contentElements[i]);
+                    if (style.display !== 'none') {
+                        return false; // At least one element is visible
                     }
                 }
+                return true; // All content is hidden
+            }
 
-                // Check localStorage as fallback
+            // Helper function to get saved collapse state
+            function getSavedCollapseState() {
                 try {
                     return localStorage.getItem(COLLAPSE_STATE_KEY) === 'true';
                 } catch (e) {
@@ -164,26 +180,44 @@
                 }
             }
 
-            // Monitor collapse state changes
-            function monitorCollapseChanges() {
+            // Function to enforce collapse state
+            function enforceCollapseState() {
+                var shouldBeCollapsed = getSavedCollapseState();
+                var isCurrentlyCollapsed = isContentCollapsed();
+
+                if (shouldBeCollapsed &amp;&amp; !isCurrentlyCollapsed) {
+                    // Should be collapsed but isn't - collapse it
+                    var contentElements = getContentElements();
+                    contentElements.forEach(function(el) {
+                        el.style.display = 'none';
+                    });
+                }
+            }
+
+            // Monitor clicks on the widget header to detect collapse/expand
+            function setupCollapseListener() {
                 if (!widgetContainer) return;
 
-                var paneFrame = widgetContainer.closest('.pane-frame');
-                if (paneFrame) {
-                    var observer = new MutationObserver(function(mutations) {
-                        mutations.forEach(function(mutation) {
-                            if (mutation.type === 'attributes' || mutation.type === 'childList') {
-                                var collapsed = isPaneCollapsed();
-                                setCollapseState(collapsed);
-                            }
-                        });
-                    });
+                // Find the pane header (clickable title area)
+                var header = widgetContainer.querySelector('.pane-header');
+                if (!header) {
+                    // Try to find h2 or other header elements
+                    var parent = widgetContainer.parentElement;
+                    while (parent) {
+                        header = parent.querySelector('h2');
+                        if (header) break;
+                        parent = parent.parentElement;
+                        if (parent &amp;&amp; parent.id === 'side-panel') break;
+                    }
+                }
 
-                    observer.observe(paneFrame, {
-                        attributes: true,
-                        childList: true,
-                        subtree: true,
-                        attributeFilter: ['style', 'class']
+                if (header) {
+                    header.addEventListener('click', function(e) {
+                        // Wait a moment for Jenkins to process the collapse
+                        setTimeout(function() {
+                            var collapsed = isContentCollapsed();
+                            setCollapseState(collapsed);
+                        }, 100);
                     });
                 }
             }
@@ -247,8 +281,10 @@
             function refreshHostMonitor() {
                 if (!widgetContainer) return;
 
-                // Check if pane is currently collapsed - if so, don't update to avoid flickering
-                if (isPaneCollapsed()) {
+                // Check if should be collapsed - if so, don't update
+                if (getSavedCollapseState()) {
+                    // Enforce collapse state in case it got expanded
+                    enforceCollapseState();
                     return;
                 }
 
@@ -267,8 +303,9 @@
                     throw new Error('Failed to fetch host monitor data');
                 })
                 .then(function(data) {
-                    // Double-check collapse state before updating DOM
-                    if (isPaneCollapsed()) {
+                    // Check again before updating DOM
+                    if (getSavedCollapseState()) {
+                        enforceCollapseState();
                         return;
                     }
 
@@ -318,12 +355,18 @@
                 });
             }
 
-            // Start monitoring collapse state changes
-            monitorCollapseChanges();
+            // Setup collapse state listener
+            setupCollapseListener();
 
-            // Start auto-refresh
+            // Enforce initial collapse state
+            enforceCollapseState();
+
+            // Start auto-refresh with collapse enforcement
             if (widgetContainer) {
-                setInterval(refreshHostMonitor, refreshInterval);
+                setInterval(function() {
+                    enforceCollapseState();
+                    refreshHostMonitor();
+                }, refreshInterval);
             }
         })();
     </script>
