@@ -158,7 +158,12 @@
             // Function to start the refresh interval
             function startRefreshInterval() {
                 // Don't start if already running
-                if (intervalId !== null) return;
+                if (intervalId !== null) {
+                    console.log('[HostMonitor] startRefreshInterval: Already running, skipping');
+                    return;
+                }
+
+                console.log('[HostMonitor] Starting refresh interval');
 
                 // Do an immediate refresh
                 refreshHostMonitor();
@@ -167,13 +172,19 @@
                 intervalId = setInterval(function() {
                     refreshHostMonitor();
                 }, refreshInterval);
+
+                console.log('[HostMonitor] Interval started with ID:', intervalId);
             }
 
             // Function to stop the refresh interval
             function stopRefreshInterval() {
                 if (intervalId !== null) {
+                    console.log('[HostMonitor] Stopping refresh interval, ID:', intervalId);
                     clearInterval(intervalId);
                     intervalId = null;
+                    console.log('[HostMonitor] Interval stopped');
+                } else {
+                    console.log('[HostMonitor] stopRefreshInterval: No interval to stop');
                 }
             }
 
@@ -195,22 +206,31 @@
                 }
 
                 if (header) {
+                    console.log('[HostMonitor] Collapse listener attached to header');
                     header.addEventListener('click', function(e) {
+                        console.log('[HostMonitor] Header clicked!');
+
                         // IMMEDIATELY stop the interval to prevent any refresh during the collapse transition
                         stopRefreshInterval();
 
                         // Wait a moment for Jenkins to process the collapse, then check the actual state
                         setTimeout(function() {
                             var collapsed = isContentCollapsed();
+                            console.log('[HostMonitor] After click, collapsed state:', collapsed);
                             setCollapseState(collapsed);
 
                             // Only restart interval if it's actually expanded
                             if (!collapsed) {
+                                console.log('[HostMonitor] Content is expanded, restarting interval');
                                 startRefreshInterval();
+                            } else {
+                                console.log('[HostMonitor] Content is collapsed, keeping interval stopped');
                             }
                             // If collapsed, interval stays stopped (already stopped above)
                         }, 150);
                     });
+                } else {
+                    console.log('[HostMonitor] WARNING: Could not find header element for collapse listener');
                 }
             }
 
@@ -271,13 +291,22 @@
             }
 
             function refreshHostMonitor() {
-                if (!widgetContainer) return;
+                console.log('[HostMonitor] refreshHostMonitor called');
 
-                // Safety check: Don't fetch if collapsed (interval should already be stopped, but be defensive)
-                if (isContentCollapsed()) {
+                if (!widgetContainer) {
+                    console.log('[HostMonitor] No widgetContainer, returning');
                     return;
                 }
 
+                // Safety check: Don't fetch if collapsed (interval should already be stopped, but be defensive)
+                var collapsed = isContentCollapsed();
+                console.log('[HostMonitor] Collapsed state check:', collapsed);
+                if (collapsed) {
+                    console.log('[HostMonitor] Content is collapsed, skipping refresh');
+                    return;
+                }
+
+                console.log('[HostMonitor] Fetching host data...');
                 var rootUrl = (typeof window.rootURL !== 'undefined' &amp;&amp; window.rootURL) ? window.rootURL : '';
 
                 // Fetch updated host data from JSON endpoint
@@ -287,17 +316,24 @@
                     }
                 })
                 .then(function(response) {
+                    console.log('[HostMonitor] Fetch response received:', response.status);
                     if (response.ok) {
                         return response.json();
                     }
                     throw new Error('Failed to fetch host monitor data');
                 })
                 .then(function(data) {
+                    console.log('[HostMonitor] Data received, hosts count:', data.hosts.length);
+
                     // Double-check before updating DOM in case it was collapsed during fetch
-                    if (isContentCollapsed()) {
+                    var collapsedNow = isContentCollapsed();
+                    console.log('[HostMonitor] Before DOM update, collapsed state:', collapsedNow);
+                    if (collapsedNow) {
+                        console.log('[HostMonitor] Content collapsed during fetch, skipping DOM update');
                         return; // Don't touch DOM
                     }
 
+                    console.log('[HostMonitor] Updating DOM with new host data');
                     var hosts = data.hosts;
                     var tableBody = widgetContainer.querySelector('tbody');
 
@@ -350,15 +386,20 @@
             // Add MutationObserver to watch for unexpected visibility changes
             function setupMutationObserver() {
                 var contentElements = getContentElements();
+                console.log('[HostMonitor] Setting up MutationObserver for', contentElements.length, 'elements');
                 if (contentElements.length === 0) return;
 
                 var observer = new MutationObserver(function(mutations) {
+                    console.log('[HostMonitor] MutationObserver triggered, mutations:', mutations.length);
                     // Check if we're supposed to be collapsed
-                    if (getSavedCollapseState()) {
+                    var shouldBeCollapsed = getSavedCollapseState();
+                    if (shouldBeCollapsed) {
                         // If saved state says collapsed, enforce it
                         var isVisible = !isContentCollapsed();
+                        console.log('[HostMonitor] Should be collapsed, but is visible?', isVisible);
                         if (isVisible) {
                             // Something made us visible when we should be collapsed
+                            console.log('[HostMonitor] ENFORCING COLLAPSE - content became visible unexpectedly!');
                             enforceCollapseState();
                         }
                     }
@@ -372,22 +413,29 @@
                         subtree: false
                     });
                 });
+                console.log('[HostMonitor] MutationObserver setup complete');
             }
 
             // Restore collapse state from previous session and start/stop interval accordingly
+            console.log('[HostMonitor] Initializing widget...');
             setTimeout(function() {
                 var shouldBeCollapsed = getSavedCollapseState();
+                console.log('[HostMonitor] Initial saved collapse state:', shouldBeCollapsed);
 
                 if (shouldBeCollapsed) {
+                    console.log('[HostMonitor] Enforcing collapsed state on load');
                     enforceCollapseState();
                     // Don't start interval if collapsed
+                    console.log('[HostMonitor] Interval NOT started (collapsed)');
                 } else {
+                    console.log('[HostMonitor] Starting in expanded state');
                     // Start the refresh interval only if expanded
                     startRefreshInterval();
                 }
 
                 // Set up observer after initial state is set
                 setupMutationObserver();
+                console.log('[HostMonitor] Initialization complete');
             }, 200);
         })();
     </script>
