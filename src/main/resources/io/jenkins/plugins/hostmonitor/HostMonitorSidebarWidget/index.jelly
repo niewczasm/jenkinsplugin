@@ -91,6 +91,7 @@
             var refreshInterval = 5000; // 5 seconds
             var widgetContainer = document.getElementById('host-monitor-status');
             var COLLAPSE_STATE_KEY = 'hostMonitorCollapseState';
+            var intervalId = null; // Store the interval ID so we can start/stop it
 
             // Helper function to get content elements
             function getContentElements() {
@@ -154,6 +155,28 @@
                 }
             }
 
+            // Function to start the refresh interval
+            function startRefreshInterval() {
+                // Don't start if already running
+                if (intervalId !== null) return;
+
+                // Do an immediate refresh
+                refreshHostMonitor();
+
+                // Then set up interval for future refreshes
+                intervalId = setInterval(function() {
+                    refreshHostMonitor();
+                }, refreshInterval);
+            }
+
+            // Function to stop the refresh interval
+            function stopRefreshInterval() {
+                if (intervalId !== null) {
+                    clearInterval(intervalId);
+                    intervalId = null;
+                }
+            }
+
             // Monitor clicks on the widget header to detect collapse/expand
             function setupCollapseListener() {
                 if (!widgetContainer) return;
@@ -177,6 +200,13 @@
                         setTimeout(function() {
                             var collapsed = isContentCollapsed();
                             setCollapseState(collapsed);
+
+                            // Start or stop the interval based on collapse state
+                            if (collapsed) {
+                                stopRefreshInterval();
+                            } else {
+                                startRefreshInterval();
+                            }
                         }, 100);
                     });
                 }
@@ -241,10 +271,9 @@
             function refreshHostMonitor() {
                 if (!widgetContainer) return;
 
-                // CRITICAL: Do not fetch or update anything if content is not visible
-                // Check actual DOM visibility instead of relying solely on localStorage
+                // Safety check: Don't fetch if collapsed (interval should already be stopped, but be defensive)
                 if (isContentCollapsed()) {
-                    return; // Exit immediately, don't even fetch
+                    return;
                 }
 
                 var rootUrl = (typeof window.rootURL !== 'undefined' &amp;&amp; window.rootURL) ? window.rootURL : '';
@@ -316,21 +345,18 @@
             // Setup collapse state listener
             setupCollapseListener();
 
-            // Restore collapse state from previous session on page load
+            // Restore collapse state from previous session and start/stop interval accordingly
             setTimeout(function() {
-                if (getSavedCollapseState()) {
+                var shouldBeCollapsed = getSavedCollapseState();
+
+                if (shouldBeCollapsed) {
                     enforceCollapseState();
+                    // Don't start interval if collapsed
+                } else {
+                    // Start the refresh interval only if expanded
+                    startRefreshInterval();
                 }
             }, 200);
-
-            // Start auto-refresh
-            if (widgetContainer) {
-                setInterval(function() {
-                    // Only refresh when content is actually visible
-                    // Let Jenkins handle collapse/expand, we just detect it
-                    refreshHostMonitor();
-                }, refreshInterval);
-            }
         })();
     </script>
 </j:jelly>
