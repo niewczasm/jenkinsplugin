@@ -110,17 +110,54 @@
             }
 
             // Helper function to check if content is actually collapsed
+            // Jenkins uses multiple methods to hide panes
             function isContentCollapsed() {
-                var contentElements = getContentElements();
-                if (contentElements.length === 0) return false;
+                if (!widgetContainer) {
+                    console.log('[HostMonitor] isContentCollapsed: No widgetContainer');
+                    return false;
+                }
 
+                // Method 1: Check if widgetContainer or parent has 'collapsed' class
+                var paneElement = widgetContainer.closest('.pane') || widgetContainer;
+                if (paneElement.classList.contains('collapsed')) {
+                    console.log('[HostMonitor] isContentCollapsed: Has collapsed class = true');
+                    return true;
+                }
+
+                // Method 2: Check content elements visibility
+                var contentElements = getContentElements();
+                console.log('[HostMonitor] isContentCollapsed: Checking', contentElements.length, 'content elements');
+
+                if (contentElements.length === 0) {
+                    console.log('[HostMonitor] isContentCollapsed: No content elements = false');
+                    return false;
+                }
+
+                var allHidden = true;
                 for (var i = 0; i &lt; contentElements.length; i++) {
-                    var style = window.getComputedStyle(contentElements[i]);
-                    if (style.display !== 'none') {
-                        return false; // At least one element is visible
+                    var el = contentElements[i];
+                    var style = window.getComputedStyle(el);
+                    var isVisible = (style.display !== 'none' &amp;&amp;
+                                   style.visibility !== 'hidden' &amp;&amp;
+                                   style.opacity !== '0' &amp;&amp;
+                                   el.offsetHeight > 0);
+
+                    console.log('[HostMonitor] Element', i, ':', {
+                        display: style.display,
+                        visibility: style.visibility,
+                        opacity: style.opacity,
+                        offsetHeight: el.offsetHeight,
+                        isVisible: isVisible
+                    });
+
+                    if (isVisible) {
+                        allHidden = false;
+                        break;
                     }
                 }
-                return true; // All content is hidden
+
+                console.log('[HostMonitor] isContentCollapsed: allHidden =', allHidden);
+                return allHidden;
             }
 
             // Helper function to get saved collapse state
@@ -192,23 +229,49 @@
             function setupCollapseListener() {
                 if (!widgetContainer) return;
 
+                // Debug: Log the widget container structure
+                console.log('[HostMonitor] Widget container:', widgetContainer);
+                console.log('[HostMonitor] Widget container HTML:', widgetContainer.outerHTML.substring(0, 500));
+
                 // Find the pane header (clickable title area)
                 var header = widgetContainer.querySelector('.pane-header');
                 if (!header) {
                     // Try to find h2 or other header elements
                     var parent = widgetContainer.parentElement;
+                    console.log('[HostMonitor] No .pane-header found, searching parent elements...');
                     while (parent) {
                         header = parent.querySelector('h2');
-                        if (header) break;
+                        if (header) {
+                            console.log('[HostMonitor] Found h2 header in parent');
+                            break;
+                        }
                         parent = parent.parentElement;
                         if (parent &amp;&amp; parent.id === 'side-panel') break;
                     }
                 }
 
                 if (header) {
+                    console.log('[HostMonitor] Header element:', header);
+                    console.log('[HostMonitor] Header HTML:', header.outerHTML);
                     console.log('[HostMonitor] Collapse listener attached to header');
+
+                    // Check if there are any anchor tags in the header
+                    var anchors = header.querySelectorAll('a');
+                    console.log('[HostMonitor] Found', anchors.length, 'anchor tags in header');
+                    anchors.forEach(function(a, idx) {
+                        console.log('[HostMonitor] Anchor', idx, ':', a.href, a.outerHTML);
+                    });
+
                     header.addEventListener('click', function(e) {
-                        console.log('[HostMonitor] Header clicked!');
+                        console.log('[HostMonitor] Header clicked!', e);
+                        console.log('[HostMonitor] Click target:', e.target);
+                        console.log('[HostMonitor] Click currentTarget:', e.currentTarget);
+
+                        // If there's an anchor, prevent its default behavior
+                        if (e.target.tagName === 'A') {
+                            console.log('[HostMonitor] Click was on anchor, preventing default');
+                            e.preventDefault();
+                        }
 
                         // IMMEDIATELY stop the interval to prevent any refresh during the collapse transition
                         stopRefreshInterval();
