@@ -196,18 +196,20 @@
 
                 if (header) {
                     header.addEventListener('click', function(e) {
-                        // Wait a moment for Jenkins to process the collapse
+                        // IMMEDIATELY stop the interval to prevent any refresh during the collapse transition
+                        stopRefreshInterval();
+
+                        // Wait a moment for Jenkins to process the collapse, then check the actual state
                         setTimeout(function() {
                             var collapsed = isContentCollapsed();
                             setCollapseState(collapsed);
 
-                            // Start or stop the interval based on collapse state
-                            if (collapsed) {
-                                stopRefreshInterval();
-                            } else {
+                            // Only restart interval if it's actually expanded
+                            if (!collapsed) {
                                 startRefreshInterval();
                             }
-                        }, 100);
+                            // If collapsed, interval stays stopped (already stopped above)
+                        }, 150);
                     });
                 }
             }
@@ -345,6 +347,33 @@
             // Setup collapse state listener
             setupCollapseListener();
 
+            // Add MutationObserver to watch for unexpected visibility changes
+            function setupMutationObserver() {
+                var contentElements = getContentElements();
+                if (contentElements.length === 0) return;
+
+                var observer = new MutationObserver(function(mutations) {
+                    // Check if we're supposed to be collapsed
+                    if (getSavedCollapseState()) {
+                        // If saved state says collapsed, enforce it
+                        var isVisible = !isContentCollapsed();
+                        if (isVisible) {
+                            // Something made us visible when we should be collapsed
+                            enforceCollapseState();
+                        }
+                    }
+                });
+
+                // Observe each content element for attribute changes (especially style)
+                contentElements.forEach(function(element) {
+                    observer.observe(element, {
+                        attributes: true,
+                        attributeFilter: ['style', 'class'],
+                        subtree: false
+                    });
+                });
+            }
+
             // Restore collapse state from previous session and start/stop interval accordingly
             setTimeout(function() {
                 var shouldBeCollapsed = getSavedCollapseState();
@@ -356,6 +385,9 @@
                     // Start the refresh interval only if expanded
                     startRefreshInterval();
                 }
+
+                // Set up observer after initial state is set
+                setupMutationObserver();
             }, 200);
         })();
     </script>
