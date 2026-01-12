@@ -45,16 +45,6 @@
     </l:pane>
     
     <style>
-        #host-monitor-status .title-link {
-            color: inherit;
-            text-decoration: underline;
-            cursor: pointer;
-        }
-
-        #host-monitor-status .title-link:hover {
-            color: #0066cc;
-        }
-
         #host-monitor-status .status-badge-small {
             display: inline-block;
             padding: 2px 6px;
@@ -96,48 +86,6 @@
     </style>
 
     <script type="text/javascript">
-        // Make the widget title text clickable and styled like a link
-        (function() {
-            var widgetContainer = document.getElementById('host-monitor-status');
-            if (widgetContainer) {
-                var titleElement = widgetContainer.querySelector('.pane-header, .pane > .pane-header, h2');
-                if (titleElement) {
-                    // Find the text node within the title element
-                    var textNode = null;
-                    for (var i = 0; i &lt; titleElement.childNodes.length; i++) {
-                        var node = titleElement.childNodes[i];
-                        // nodeType 3 is TEXT_NODE
-                        if (node.nodeType === 3 &amp;&amp; node.nodeValue.trim()) {
-                            textNode = node;
-                            break;
-                        }
-                    }
-
-                    if (textNode) {
-                        // Replace just the text node with an anchor tag
-                        var rootUrl = (typeof window.rootURL !== 'undefined' &amp;&amp; window.rootURL) ? window.rootURL : '';
-                        var linkElement = document.createElement('a');
-                        linkElement.href = rootUrl + '/host-monitor';
-                        linkElement.className = 'pane-header-title title-link';
-                        linkElement.textContent = textNode.nodeValue.trim();
-
-                        // Allow Ctrl+Click or middle-click to open link in new tab
-                        // But prevent normal click from navigating so Jenkins collapse works
-                        linkElement.addEventListener('click', function(e) {
-                            // Allow Ctrl+Click, Cmd+Click, or middle-click to open in new tab
-                            if (e.ctrlKey || e.metaKey || e.button === 1) {
-                                return; // Let browser handle it
-                            }
-                            // For normal clicks, prevent navigation so Jenkins collapse can work
-                            e.preventDefault();
-                        });
-
-                        titleElement.replaceChild(linkElement, textNode);
-                    }
-                }
-            }
-        })();
-
         // Auto-refresh the host monitor status every 5 seconds
         (function() {
             var refreshInterval = 5000; // 5 seconds
