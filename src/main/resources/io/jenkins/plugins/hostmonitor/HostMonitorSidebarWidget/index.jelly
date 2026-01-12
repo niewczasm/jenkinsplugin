@@ -110,54 +110,22 @@
             }
 
             // Helper function to check if content is actually collapsed
-            // Jenkins uses multiple methods to hide panes
+            // Jenkins uses the 'expanded' class on pane-frame to track state
             function isContentCollapsed() {
                 if (!widgetContainer) {
                     console.log('[HostMonitor] isContentCollapsed: No widgetContainer');
                     return false;
                 }
 
-                // Method 1: Check if widgetContainer or parent has 'collapsed' class
-                var paneElement = widgetContainer.closest('.pane') || widgetContainer;
-                if (paneElement.classList.contains('collapsed')) {
-                    console.log('[HostMonitor] isContentCollapsed: Has collapsed class = true');
-                    return true;
-                }
+                // Jenkins adds 'expanded' class when pane is expanded
+                // When collapsed, the 'expanded' class is removed
+                var isExpanded = widgetContainer.classList.contains('expanded');
+                var isCollapsed = !isExpanded;
 
-                // Method 2: Check content elements visibility
-                var contentElements = getContentElements();
-                console.log('[HostMonitor] isContentCollapsed: Checking', contentElements.length, 'content elements');
+                console.log('[HostMonitor] isContentCollapsed: pane-frame classes =', widgetContainer.className);
+                console.log('[HostMonitor] isContentCollapsed: isExpanded =', isExpanded, ', returning collapsed =', isCollapsed);
 
-                if (contentElements.length === 0) {
-                    console.log('[HostMonitor] isContentCollapsed: No content elements = false');
-                    return false;
-                }
-
-                var allHidden = true;
-                for (var i = 0; i &lt; contentElements.length; i++) {
-                    var el = contentElements[i];
-                    var style = window.getComputedStyle(el);
-                    var isVisible = (style.display !== 'none' &amp;&amp;
-                                   style.visibility !== 'hidden' &amp;&amp;
-                                   style.opacity !== '0' &amp;&amp;
-                                   el.offsetHeight > 0);
-
-                    console.log('[HostMonitor] Element', i, ':', {
-                        display: style.display,
-                        visibility: style.visibility,
-                        opacity: style.opacity,
-                        offsetHeight: el.offsetHeight,
-                        isVisible: isVisible
-                    });
-
-                    if (isVisible) {
-                        allHidden = false;
-                        break;
-                    }
-                }
-
-                console.log('[HostMonitor] isContentCollapsed: allHidden =', allHidden);
-                return allHidden;
+                return isCollapsed;
             }
 
             // Helper function to get saved collapse state
@@ -178,19 +146,8 @@
                 }
             }
 
-            // Function to enforce collapse state
-            function enforceCollapseState() {
-                var shouldBeCollapsed = getSavedCollapseState();
-                var isCurrentlyCollapsed = isContentCollapsed();
-
-                if (shouldBeCollapsed &amp;&amp; !isCurrentlyCollapsed) {
-                    // Should be collapsed but isn't - collapse it
-                    var contentElements = getContentElements();
-                    contentElements.forEach(function(el) {
-                        el.style.display = 'none';
-                    });
-                }
-            }
+            // No longer needed - Jenkins handles collapse natively
+            // We just observe and react to Jenkins' state changes
 
             // Function to start the refresh interval
             function startRefreshInterval() {
@@ -225,7 +182,43 @@
                 }
             }
 
-            // Monitor clicks on the widget header to detect collapse/expand
+            // Watch for Jenkins collapse/expand by observing class changes on pane-frame
+            function setupCollapseObserver() {
+                if (!widgetContainer) return;
+
+                console.log('[HostMonitor] Setting up collapse observer on pane-frame');
+
+                var observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                            var isExpanded = widgetContainer.classList.contains('expanded');
+                            console.log('[HostMonitor] Pane-frame class changed! isExpanded =', isExpanded);
+
+                            // Save the state
+                            setCollapseState(!isExpanded);
+
+                            // Start or stop interval based on expanded state
+                            if (isExpanded) {
+                                console.log('[HostMonitor] Pane expanded - starting interval');
+                                startRefreshInterval();
+                            } else {
+                                console.log('[HostMonitor] Pane collapsed - stopping interval');
+                                stopRefreshInterval();
+                            }
+                        }
+                    });
+                });
+
+                // Observe the pane-frame for class attribute changes
+                observer.observe(widgetContainer, {
+                    attributes: true,
+                    attributeFilter: ['class']
+                });
+
+                console.log('[HostMonitor] Collapse observer setup complete');
+            }
+
+            // Legacy click-based listener (kept for debugging)
             function setupCollapseListener() {
                 if (!widgetContainer) return;
 
@@ -443,61 +436,27 @@
                 });
             }
 
-            // Setup collapse state listener
-            setupCollapseListener();
-
-            // Add MutationObserver to watch for unexpected visibility changes
-            function setupMutationObserver() {
-                var contentElements = getContentElements();
-                console.log('[HostMonitor] Setting up MutationObserver for', contentElements.length, 'elements');
-                if (contentElements.length === 0) return;
-
-                var observer = new MutationObserver(function(mutations) {
-                    console.log('[HostMonitor] MutationObserver triggered, mutations:', mutations.length);
-                    // Check if we're supposed to be collapsed
-                    var shouldBeCollapsed = getSavedCollapseState();
-                    if (shouldBeCollapsed) {
-                        // If saved state says collapsed, enforce it
-                        var isVisible = !isContentCollapsed();
-                        console.log('[HostMonitor] Should be collapsed, but is visible?', isVisible);
-                        if (isVisible) {
-                            // Something made us visible when we should be collapsed
-                            console.log('[HostMonitor] ENFORCING COLLAPSE - content became visible unexpectedly!');
-                            enforceCollapseState();
-                        }
-                    }
-                });
-
-                // Observe each content element for attribute changes (especially style)
-                contentElements.forEach(function(element) {
-                    observer.observe(element, {
-                        attributes: true,
-                        attributeFilter: ['style', 'class'],
-                        subtree: false
-                    });
-                });
-                console.log('[HostMonitor] MutationObserver setup complete');
-            }
-
-            // Restore collapse state from previous session and start/stop interval accordingly
+            // Initialize: Set up observers and start interval if currently expanded
             console.log('[HostMonitor] Initializing widget...');
             setTimeout(function() {
-                var shouldBeCollapsed = getSavedCollapseState();
-                console.log('[HostMonitor] Initial saved collapse state:', shouldBeCollapsed);
+                // Set up the collapse observer to watch for Jenkins' class changes
+                setupCollapseObserver();
 
-                if (shouldBeCollapsed) {
-                    console.log('[HostMonitor] Enforcing collapsed state on load');
-                    enforceCollapseState();
-                    // Don't start interval if collapsed
-                    console.log('[HostMonitor] Interval NOT started (collapsed)');
-                } else {
-                    console.log('[HostMonitor] Starting in expanded state');
-                    // Start the refresh interval only if expanded
+                // Also set up legacy click listener for debugging
+                setupCollapseListener();
+
+                // Check actual current state (not saved state)
+                var isCurrentlyExpanded = widgetContainer.classList.contains('expanded');
+                console.log('[HostMonitor] Current expanded state:', isCurrentlyExpanded);
+
+                // Start interval only if currently expanded
+                if (isCurrentlyExpanded) {
+                    console.log('[HostMonitor] Widget is expanded - starting interval');
                     startRefreshInterval();
+                } else {
+                    console.log('[HostMonitor] Widget is collapsed - interval NOT started');
                 }
 
-                // Set up observer after initial state is set
-                setupMutationObserver();
                 console.log('[HostMonitor] Initialization complete');
             }, 200);
         })();
