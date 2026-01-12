@@ -11,7 +11,7 @@
     </parent>
     <groupId>io.jenkins.plugins</groupId>
     <artifactId>host-monitor</artifactId>
-    <version>1.8.5.4</version>
+    <version>1.8.5.5</version>
     <packaging>hpi</packaging>
     <name>Host Monitor Plugin</name>
     <description>Displays status of external hosts in Jenkins sidebar</description>

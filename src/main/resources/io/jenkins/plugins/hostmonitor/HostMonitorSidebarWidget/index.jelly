@@ -154,7 +154,7 @@
             function refreshHostMonitor() {
                 if (!isExpanded()) return;
 
-                var rootUrl = (typeof window.rootURL !== 'undefined' && window.rootURL) ? window.rootURL : '';
+                var rootUrl = (typeof window.rootURL !== 'undefined' &amp;&amp; window.rootURL) ? window.rootURL : '';
 
                 fetch(rootUrl + '/host-monitor/hostsJson', {
                     headers: { 'Accept': 'application/json' }
