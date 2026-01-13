@@ -10,7 +10,8 @@
       "Bash(do echo \"=== Commit: $msg ===\")",
       "Bash(done)",
       "Bash(git show:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(git diff:*)"
     ]
   }
 }

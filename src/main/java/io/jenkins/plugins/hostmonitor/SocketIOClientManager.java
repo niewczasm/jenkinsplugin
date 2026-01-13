@@ -57,8 +57,9 @@ public class SocketIOClientManager {
             IO.Options options = IO.Options.builder()
                 .setReconnection(true)
                 .setReconnectionDelay(1000)
-                .setReconnectionDelayMax(5000)
-                .setReconnectionAttempts(Integer.MAX_VALUE)
+                .setReconnectionDelayMax(30000)  // Max 30 seconds between retries
+                .setReconnectionAttempts(100)     // Max 100 attempts instead of infinite
+                .setTimeout(10000)                // 10 second connection timeout
                 .build();
 
             socket = IO.socket(serverUrl, options);

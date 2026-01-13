@@ -150,14 +150,15 @@ The plugin automatically applies colors based on the status value:
 
 | Status | Color | Use Case |
 |--------|-------|----------|
-| `IDLE`, `BUSY`, `ONLINE`, `UP`, `HEALTHY` | 🟢 Green | Host is functioning normally |
-| `WARNING`, `DEGRADED` | 🟡 Yellow | Host has issues but is operational |
-| `WAIT`, `ERROR`, `OFFLINE`, `DOWN` | 🔴 Red | Host is not functioning or waiting |
-| `UNKNOWN` or any other | ⚪ Grey | Status not determined |
+| `IDLE`, `BUSY` | 🟢 Green | Host is functioning normally (available or in use) |
+| `WAIT`, `ERROR`, `OFFLINE` | 🔴 Red | Host has issues, not functioning, or waiting |
+| `UNKNOWN` or any other | ⚪ Grey | Status not determined or custom status |
 
-Status values are case-insensitive.
-
-**Note**: When using Socket.IO integration, the plugin recognizes `IDLE` (available) and `BUSY` (in use) states from external systems like Autotest.
+**Important Notes:**
+- Status values are case-insensitive
+- Only the exact status names above receive color coding
+- Custom status names (e.g., `ONLINE`, `UP`, `HEALTHY`, `WARNING`, `DEGRADED`, `DOWN`) will display in grey
+- When using Socket.IO integration, the plugin recognizes `IDLE` (available) and `BUSY` (in use) states from external systems like Autotest
 
 ## Configuration
 
@@ -208,7 +209,34 @@ For real-time monitoring from external systems:
 2. Configure server host, port, namespace, and event name
 3. External systems send host status updates via Socket.IO
 
+**Connection Settings:**
+- Maximum reconnection attempts: 100
+- Maximum delay between retries: 30 seconds (exponential backoff)
+- Connection timeout: 10 seconds
+- After 100 failed attempts, manual reconnection is required
+
 See [SOCKETIO_INTEGRATION.md](SOCKETIO_INTEGRATION.md) for details.
+
+## Security
+
+### Permissions
+
+- **Configuration Access**: Only Jenkins administrators can modify plugin configuration
+- **View Access**: Users must have Jenkins READ permission to view host monitoring data
+- **Widget Visibility**: The sidebar widget only appears for users with appropriate permissions
+
+### Data Protection
+
+- All host status data is stored in `$JENKINS_HOME/host-monitor-config.xml`
+- Configuration changes are logged in Jenkins system logs
+- Status updates from pipelines use the pipeline's permission context
+
+### Best Practices
+
+1. **Limit Socket.IO Access**: Ensure Socket.IO server is on a trusted network
+2. **Review Base Host List**: Regularly audit which hosts are being monitored
+3. **Monitor Failed Connections**: Check Jenkins logs for Socket.IO connection issues
+4. **Use Strong Permissions**: Configure Jenkins security realm appropriately
 
 ## Viewing Host Status
 
@@ -217,9 +245,13 @@ See [SOCKETIO_INTEGRATION.md](SOCKETIO_INTEGRATION.md) for details.
 The host monitor widget appears automatically in the Jenkins sidebar when there are monitored hosts. It shows:
 - Hostname (with count for duplicates)
 - Current status (with color coding)
-- Status message (reservation info or test path)
+- Status message with smart display:
+  - **Priority 1**: If reserved, shows "Reserved by [username]"
+  - **Priority 2**: If BUSY and executing a test, shows test path (last 2 path segments)
+  - **Priority 3**: Shows statusMessage or "Available"
 - Auto-refreshes every 5 seconds
 - Clickable title to access configuration
+- Only visible to users with READ permission
 
 ### Management Page
 
@@ -360,21 +392,39 @@ mvn test
 
 ### Widget Not Showing
 
-1. Verify hosts have been added using the `updateHostStatus` step
+1. Verify hosts have been added using the `updateHostStatus` step or Socket.IO
 2. Check that the plugin is properly installed in Manage Plugins
-3. Ensure no JavaScript errors in browser console
+3. **Verify user has READ permission** - widget only shows to authorized users
+4. Ensure no JavaScript errors in browser console
+5. Confirm you're on the main Jenkins page (widget only appears there)
 
 ### Status Not Updating
 
 1. Check Jenkins logs for any errors
 2. Verify the pipeline step is being executed
 3. Ensure proper permissions for the pipeline
+4. For Socket.IO: Check connection status in Host Monitor configuration page
+
+### Permission Denied Errors
+
+1. **403 on /host-monitor/hostsJson**: User needs READ permission
+2. **Widget not visible**: User needs READ permission
+3. **Cannot modify configuration**: User needs ADMINISTER permission
+
+### Socket.IO Connection Issues
+
+1. Check that Socket.IO server is running and accessible
+2. Verify host, port, namespace, and event name are correct
+3. Connection will retry up to 100 times before stopping
+4. Check Jenkins logs for connection error details
+5. After max retries, save configuration again to reconnect
 
 ### Configuration Issues
 
-1. Check `$JENKINS_HOME/config.xml` for plugin configuration
+1. Check `$JENKINS_HOME/host-monitor-config.xml` for plugin configuration
 2. Verify write permissions to Jenkins home directory
-3. Review Jenkins system logs
+3. Review Jenkins system logs for configuration errors
+4. Note: Saving configuration clears all host data and reconnects Socket.IO
 
 ## License
 
@@ -424,6 +474,12 @@ Hosts are displayed in priority order:
 3. Other hosts (alphabetically)
 
 ## Changelog
+
+### Version 1.8.6
+- **Security**: Added permission checks for host data access (requires READ permission)
+- **Security**: Limited Socket.IO reconnection attempts to prevent resource exhaustion
+- Improved Socket.IO connection stability (30s max retry delay, 10s connection timeout)
+- Updated documentation with accurate status color mappings
 
 ### Version 1.7+
 - Added Socket.IO integration for real-time updates

@@ -480,6 +480,9 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
      */
     @GET
     public void doHostsJson(StaplerRequest req, StaplerResponse rsp) throws IOException {
+        // Require at least READ permission to access host data
+        Jenkins.get().checkPermission(Jenkins.READ);
+
         // Get hosts from sidebar widget (already sorted)
         HostMonitorSidebarWidget widget = new HostMonitorSidebarWidget();
         List<MonitoredHost> sortedHosts = widget.getHosts();

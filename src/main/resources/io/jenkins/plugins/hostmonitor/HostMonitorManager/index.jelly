@@ -101,6 +101,17 @@
                         <f:textbox name="socketIOEventName" value="${it.socketIOEventName}" default="hostStatus"/>
                     </f:entry>
 
+                    <div style="margin-top: 15px; padding: 10px; background-color: #fff3cd; border-left: 4px solid #856404;">
+                        <strong>⚠️ Security &amp; Connection Settings:</strong>
+                        <ul style="margin: 8px 0 4px 20px; font-size: 12px; color: #666;">
+                            <li>Connection will retry up to 100 times with exponential backoff (max 30 seconds between retries)</li>
+                            <li>Connection timeout is set to 10 seconds</li>
+                            <li>Saving this configuration will clear all current host data and reconnect</li>
+                            <li>Only administrators can modify this configuration</li>
+                            <li>Host status data requires READ permission to view</li>
+                        </ul>
+                    </div>
+
                     <div style="margin-top: 10px; padding: 10px; background-color: #f0f0f0; border-left: 4px solid #4a90e2;">
                         <strong>Socket.IO Message Formats:</strong>
                         <p style="margin: 4px 0; font-size: 12px; color: #666;">
@@ -122,10 +133,11 @@
   ]
 }</pre>
                         <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">
-                            <strong>Status values:</strong> IDLE, BUSY (green) | WARNING, DEGRADED (yellow) |
-                            WAIT, ERROR, OFFLINE (red) | others (grey).
-                            See <a href="https://github.com/yourusername/host-monitor-plugin/blob/main/SOCKETIO_INTEGRATION.md"
-                               target="_blank">SOCKETIO_INTEGRATION.md</a> for detailed format specifications.
+                            <strong>Status values:</strong> IDLE, BUSY (green) | WAIT, ERROR, OFFLINE (red) | others (grey).
+                        </p>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
+                            <strong>Array Format Fields:</strong> Index 0=hostname, 2=unique ID, 6=status, 7=reservation, last=test path.
+                            The plugin tracks unique instances by ID and displays reservation info and test paths in the sidebar.
                         </p>
                     </div>
 
@@ -230,10 +242,15 @@ node {
             
             <h3>Status Values</h3>
             <ul>
-                <li><strong>IDLE/BUSY</strong> - Displayed in green</li>
-                <li><strong>ERROR/WAIT/OFFLINE</strong> - Displayed in red</li>
+                <li><strong>IDLE, BUSY</strong> - Displayed in green (host available or in use)</li>
+                <li><strong>ERROR, WAIT, OFFLINE</strong> - Displayed in red (host has issues or unavailable)</li>
                 <li><strong>UNKNOWN</strong> or any other value - Displayed in grey</li>
             </ul>
+
+            <p style="margin-top: 10px; font-size: 12px;">
+                <strong>Note:</strong> Status values are case-insensitive. You can use custom status names,
+                but they will be displayed in grey unless they match one of the recognized values above.
+            </p>
         </l:main-panel>
     </l:layout>
 </j:jelly>

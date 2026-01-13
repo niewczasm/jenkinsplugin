@@ -72,6 +72,18 @@ public class HostMonitorWidget extends PageDecorator {
      * Only show on main page and when there are hosts to monitor
      */
     public boolean isEnabled() {
+        // Check if user has permission to view
+        Jenkins jenkins = Jenkins.getInstanceOrNull();
+        if (jenkins == null) {
+            return false;
+        }
+
+        try {
+            jenkins.checkPermission(Jenkins.READ);
+        } catch (org.springframework.security.access.AccessDeniedException e) {
+            return false;
+        }
+
         return isMainPage() && !getHosts().isEmpty();
     }
 }
