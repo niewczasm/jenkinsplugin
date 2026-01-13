@@ -24,7 +24,7 @@ public class HostMonitorSidebarWidget extends Widget {
     
     /**
      * Get all monitored hosts for display, sorted by:
-     * 1. OFFLINE hosts first (ascending)
+     * 1. OFFLINE and WAIT hosts first (ascending)
      * 2. Base hosts from configuration (ascending)
      * 3. Rest (ascending)
      */
@@ -34,13 +34,14 @@ public class HostMonitorSidebarWidget extends Widget {
         List<String> baseHosts = manager.getBaseHosts();
 
         // Separate hosts into categories
-        List<MonitoredHost> offlineHosts = new ArrayList<>();
+        List<MonitoredHost> priorityHosts = new ArrayList<>();
         List<MonitoredHost> baseConfigHosts = new ArrayList<>();
         List<MonitoredHost> otherHosts = new ArrayList<>();
 
         for (MonitoredHost host : allHosts) {
-            if ("OFFLINE".equalsIgnoreCase(host.getStatus())) {
-                offlineHosts.add(host);
+            String status = host.getStatus();
+            if ("OFFLINE".equalsIgnoreCase(status) || "WAIT".equalsIgnoreCase(status)) {
+                priorityHosts.add(host);
             } else if (baseHosts.contains(host.getHostname())) {
                 baseConfigHosts.add(host);
             } else {
@@ -50,13 +51,13 @@ public class HostMonitorSidebarWidget extends Widget {
 
         // Sort each category alphabetically by hostname
         Comparator<MonitoredHost> byHostname = Comparator.comparing(MonitoredHost::getHostname, String.CASE_INSENSITIVE_ORDER);
-        offlineHosts.sort(byHostname);
+        priorityHosts.sort(byHostname);
         baseConfigHosts.sort(byHostname);
         otherHosts.sort(byHostname);
 
         // Combine in the desired order
         List<MonitoredHost> result = new ArrayList<>();
-        result.addAll(offlineHosts);
+        result.addAll(priorityHosts);
         result.addAll(baseConfigHosts);
         result.addAll(otherHosts);
 

@@ -536,19 +536,22 @@ public class HostMonitorManager extends ManagementLink implements Saveable {
         // Save configuration
         save();
 
-        // Handle connection changes
-        if (socketIOEnabled && !wasEnabled) {
-            // Enabled - connect
-            LOGGER.info("Socket.IO enabled, connecting...");
-            SocketIOClientManager.getInstance().connect(this);
-        } else if (!socketIOEnabled && wasEnabled) {
+        // Clear all hosts to start fresh
+        LOGGER.info("Configuration changed - clearing all hosts");
+        hosts.clear();
+
+        // Clear base host counts map as well
+        baseHostCounts.clear();
+
+        // Always reconnect to WebSocket if enabled, disconnect if disabled
+        if (socketIOEnabled) {
+            // Reconnect to ensure everything is fresh
+            LOGGER.info("Reconnecting to Socket.IO to refresh hosts...");
+            SocketIOClientManager.getInstance().reconnect(this);
+        } else {
             // Disabled - disconnect
             LOGGER.info("Socket.IO disabled, disconnecting...");
             SocketIOClientManager.getInstance().disconnect();
-        } else if (socketIOEnabled) {
-            // Still enabled but config changed - reconnect
-            LOGGER.info("Socket.IO configuration changed, reconnecting...");
-            SocketIOClientManager.getInstance().reconnect(this);
         }
 
         rsp.sendRedirect(".");
